@@ -80,6 +80,11 @@ export const joinSchema = z.object({
     .string()
     .transform((s) => s.toUpperCase().replace(/[^A-Z0-9]/g, ""))
     .pipe(z.string().min(1, { error: "Enter your join code." })),
+  /**
+   * Set when the code came with a campaign's link; a code for any other
+   * campaign is then refused, as an unknown one is.
+   */
+  campaignId: z.uuid().optional(),
 });
 
 export const campaignSchema = z
@@ -96,16 +101,18 @@ export const campaignSchema = z
       .max(MAX_DECIMALS, { error: `Decimals must be 0 to ${MAX_DECIMALS}.` }),
     baseReferenceUrl: optionalLink,
     allowDebt: z.boolean().default(false),
+    /** Readable by anyone with its URL; making it public drops observers. */
+    public: z.boolean().default(false),
     /** In minor units, but always a whole number of the currency. */
     pettyCashHold: z
-      .int({ error: "Petty cash hold isn't a valid amount." })
-      .min(0, { error: "Petty cash hold can't be negative." })
-      .max(MAX_MONEY, { error: "That petty cash hold is too large." })
+      .int({ error: "Petty cash reserve isn't a valid amount." })
+      .min(0, { error: "Petty cash reserve can't be negative." })
+      .max(MAX_MONEY, { error: "That petty cash reserve is too large." })
       .default(0),
   })
   .refine((c) => c.pettyCashHold % 10 ** c.currencyDecimals === 0, {
     path: ["pettyCashHold"],
-    error: "Petty cash hold must be a whole number.",
+    error: "Petty cash reserve must be a whole number.",
   });
 
 export const characterSchema = z.object({

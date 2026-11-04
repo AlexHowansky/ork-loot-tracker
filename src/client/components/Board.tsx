@@ -14,7 +14,9 @@ export type Mode =
   | { kind: "gm" }
   | { kind: "player"; characterId: string }
   /** Sees what players see, as no character, and can change nothing. */
-  | { kind: "observer"; name: string };
+  | { kind: "observer"; name: string }
+  /** Anyone reading a public campaign without signing in; read-only. */
+  | { kind: "public" };
 
 type Tab = "loot" | "sessions" | "splits" | "characters" | "observers" | "pettyCash";
 
@@ -29,7 +31,9 @@ export function CampaignBoard({
   /** Buttons for the header, e.g. edit or split. */
   actions?: ReactNode;
 }) {
-  const [tab, setTab] = useState<Tab>("loot");
+  const [chosenTab, setTab] = useState<Tab>("loot");
+  // The Observers tab goes once the campaign is made public.
+  const tab = chosenTab === "observers" && !view.observers ? "loot" : chosenTab;
   const [sessionFilter, setSessionFilter] = useState<number | "all">("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pool");
   const [claimFilter, setClaimFilter] = useState<ClaimFilter>("all");
@@ -71,6 +75,7 @@ export function CampaignBoard({
           <div>
             {me && <p className="text-sm opacity-80">Playing {me.name}</p>}
             {mode.kind === "observer" && <p className="text-sm opacity-80">Observing as {mode.name}</p>}
+            {mode.kind === "public" && <p className="text-sm opacity-80">Public view</p>}
             <h1 className="text-2xl font-bold sm:text-3xl">{campaign.name}</h1>
             <p className="text-sm opacity-80">
               <Icon icon={faCalendarDays} /> Started {campaign.startDate}
@@ -104,7 +109,7 @@ export function CampaignBoard({
           value={<Money amount={campaign.pettyCash} campaign={campaign} />}
           desc={
             campaign.pettyCashHold > 0
-              ? `Holding ${formatMoney(campaign.pettyCashHold, campaign.currencyDecimals, campaign.currencyLabel)} for shared costs`
+              ? `Keeping ${formatMoney(campaign.pettyCashHold, campaign.currencyDecimals, campaign.currencyLabel)} in reserve for shared costs`
               : "Paid out in the next split"
           }
         />

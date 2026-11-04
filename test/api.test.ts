@@ -362,13 +362,38 @@ describe("campaign access", () => {
 });
 
 describe("join codes", () => {
-  test("the GM's view links to the join page from APP_URL, players' don't", async () => {
-    const { view } = await seed();
+  test("join links use the campaign's address from APP_URL, for the GM only", async () => {
+    const { campaignId, view } = await seed();
     const gmView = await view();
-    expect(gmView.joinUrl).toBe(`${ORIGIN}/join`);
+    expect(gmView.campaignUrl).toBe(`${ORIGIN}/campaigns/${campaignId}`);
     const { player, res } = await join(gmView.characters[0]!.joinCode!);
     const play = await player.get<PlayView>(`/api/play/${res.body.characterId}`);
-    expect(play.body.joinUrl).toBeUndefined();
+    expect(play.body.campaignUrl).toBeUndefined();
+  });
+
+  test("a code from a campaign's link only joins that campaign", async () => {
+    const { campaignId, characterIds, view } = await seed();
+    const other = (await gmA.post("/api/campaigns", { ...campaignBody, name: "Other" })).body;
+    const code = (await view()).characters.find((c) => c.id === characterIds[0])!.joinCode!;
+    const player = new Client(ctx.app);
+
+    // Another campaign's link refuses it as if it were unknown, and
+    // leaves it unused.
+    const wrong = await player.post("/api/join", { code, campaignId: other.id });
+    const unknown = await player.post("/api/join", { code: "ZZZZZZZZZZ", campaignId: other.id });
+    expect(wrong).toEqual(unknown);
+    expect(wrong.status).toBe(404);
+    expect((await player.post("/api/join", { code, campaignId: crypto.randomUUID() })).status).toBe(404);
+    expect((await player.post("/api/join", { code, campaignId: "nope" })).status).toBe(400);
+
+    const right = await player.post("/api/join", { code, campaignId });
+    expect(right.body).toEqual({ characterId: characterIds[0], campaignId });
+
+    // Observers' codes are checked the same way.
+    const o = (await gmA.post(`/api/campaigns/${campaignId}/observers`, { name: "Nana" })).body;
+    const oCode = (await view()).observers!.find((x) => x.id === o.id)!.joinCode!;
+    expect((await player.post("/api/join", { code: oCode, campaignId: other.id })).status).toBe(404);
+    expect((await player.post("/api/join", { code: oCode, campaignId })).body).toEqual({ observerId: o.id, campaignId });
   });
 
   test("a code works once and regenerating replaces it", async () => {
@@ -426,7 +451,7 @@ describe("observers", () => {
     const code = (await seeded.view()).observers!.find((o) => o.id === added.body.id)!.joinCode!;
     const { player, res } = await join(code);
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ observerId: added.body.id });
+    expect(res.body).toEqual({ observerId: added.body.id, campaignId: seeded.campaignId });
     return { ...seeded, observerId: added.body.id as string, player };
   }
 
@@ -516,7 +541,7 @@ describe("observers", () => {
     expect(lost.body.error).toContain("new join code");
     expect((await player.get<Me>("/api/auth/me")).body.observers).toEqual([]);
     const again = await player.post("/api/join", { code: fresh });
-    expect(again.body).toEqual({ observerId });
+    expect(again.body).toEqual({ observerId, campaignId: (await view()).campaign.id });
 
     expect((await gmA.del(`/api/observers/${observerId}`)).status).toBe(200);
     expect((await player.get(`/api/watch/${observerId}`)).status).toBe(404);
@@ -539,6 +564,94 @@ describe("observers", () => {
     expect((await gmB.post(`/api/observers/${observerId}/code`)).status).toBe(404);
     expect((await gmB.del(`/api/observers/${observerId}`)).status).toBe(404);
     expect((await new Client(ctx.app).get(`/api/watch/${observerId}`)).status).toBe(401);
+  });
+});
+
+describe("public campaigns", () => {
+  const makePublic = (campaignId: string, on = true) =>
+    gmA.patch(`/api/campaigns/${campaignId}`, { ...campaignBody, public: on });
+
+  test("campaigns start private, and only the GM sees the public URL", async () => {
+    const { campaignId, view } = await seed();
+    const gm = await view();
+    expect(gm.campaign.public).toBe(false);
+    expect(gm.campaignUrl).toBe(`${ORIGIN}/campaigns/${campaignId}`);
+    const anon = await new Client(ctx.app).get(`/api/public/${campaignId}`);
+    expect(anon.status).toBe(404);
+    expect(anon.body.error).toContain("isn't public");
+    // A private campaign answers just like one that doesn't exist.
+    const missing = await new Client(ctx.app).get(`/api/public/${crypto.randomUUID()}`);
+    expect(missing).toEqual(anon);
+    const code = gm.characters[0]!.joinCode!;
+    const { player } = await join(code);
+    const play = (await player.get<PlayView>(`/api/play/${gm.characters[0]!.id}`)).body;
+    expect(play.campaignUrl).toBeUndefined();
+  });
+
+  test("anyone can read a public campaign, as a player sees it", async () => {
+    const { campaignId, sessionId } = await seed();
+    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Gem", value: 500 });
+    await gmA.post(`/api/sessions/${sessionId}/loot`, {
+      name: "Odd ring",
+      value: 900,
+      description: "Worth a lot",
+      unidentified: true,
+    });
+    expect((await makePublic(campaignId)).body.public).toBe(true);
+    const anon = new Client(ctx.app);
+    const res = await anon.get<CampaignView>(`/api/public/${campaignId}`);
+    expect(res.status).toBe(200);
+    expect(res.body.campaign.public).toBe(true);
+    expect(res.body.characters.map((c) => c.name)).toEqual(["Amiri", "Ezren", "Valeros"]);
+    for (const c of res.body.characters) {
+      expect(c.joinCode).toBeUndefined();
+      expect(c.hasPlayer).toBeUndefined();
+    }
+    expect(res.body.observers).toBeUndefined();
+    expect(res.body.campaignUrl).toBeUndefined();
+    const ring = res.body.loot.find((l) => l.name === "Odd ring")!;
+    expect([ring.value, ring.description, ring.subtotal]).toEqual([null, null, 0]);
+    // Reading needs no player, so no cookie is set.
+    const raw = await anon.raw("GET", `/api/public/${campaignId}`);
+    expect(raw.headers.getSetCookie()).toEqual([]);
+  });
+
+  test("public readers can change nothing", async () => {
+    const { campaignId, sessionId, characterIds } = await seed();
+    const gem = (await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Gem", value: 500 })).body;
+    await makePublic(campaignId);
+    const anon = new Client(ctx.app);
+    expect((await anon.post(`/api/public/${campaignId}`, {})).status).toBe(405);
+    expect((await anon.post(`/api/play/${characterIds[0]}/claim`, { lootId: gem.id, quantity: 1 })).status).toBe(401);
+    expect((await anon.patch(`/api/campaigns/${campaignId}`, campaignBody)).status).toBe(401);
+  });
+
+  test("making a campaign public deletes its observers and stops new ones", async () => {
+    const { campaignId, view } = await seed();
+    const o = (await gmA.post(`/api/campaigns/${campaignId}/observers`, { name: "Nana" })).body;
+    const { player } = await join((await view()).observers![0]!.joinCode!);
+    expect((await makePublic(campaignId)).status).toBe(200);
+    expect((await view()).observers).toBeUndefined();
+    expect((await player.get(`/api/watch/${o.id}`)).status).toBe(404);
+    expect((await player.get<Me>("/api/auth/me")).body.observers).toEqual([]);
+    const refused = await gmA.post(`/api/campaigns/${campaignId}/observers`, { name: "Gran" });
+    expect(refused.status).toBe(400);
+    expect(refused.body.error).toContain("public");
+
+    // Private again, observers come back, starting with none.
+    expect((await makePublic(campaignId, false)).body.public).toBe(false);
+    expect((await view()).observers).toEqual([]);
+    expect((await new Client(ctx.app).get(`/api/public/${campaignId}`)).status).toBe(404);
+    expect((await gmA.post(`/api/campaigns/${campaignId}/observers`, { name: "Gran" })).status).toBe(200);
+  });
+
+  test("saving a public campaign again keeps it public", async () => {
+    const { campaignId } = await seed();
+    await makePublic(campaignId);
+    const saved = await gmA.patch(`/api/campaigns/${campaignId}`, { ...campaignBody, public: true, name: "New name" });
+    expect(saved.body.public).toBe(true);
+    // Leaving the field out makes it private, as an unchecked box does.
+    expect((await gmA.patch(`/api/campaigns/${campaignId}`, campaignBody)).body.public).toBe(false);
   });
 });
 
@@ -1059,7 +1172,7 @@ describe("petty cash", () => {
     // A whole number of gp only: 1.50 gp is refused.
     const part = await setHold(150);
     expect(part.status).toBe(400);
-    expect(part.body.fields.pettyCashHold).toBe("Petty cash hold must be a whole number.");
+    expect(part.body.fields.pettyCashHold).toBe("Petty cash reserve must be a whole number.");
     expect((await setHold(100)).body.pettyCashHold).toBe(100);
 
     // 1003 of loot gives up 100 to the hold; 903 over 4 shares is 225, 3 over.
@@ -1580,6 +1693,33 @@ describe("live updates", () => {
     // Coming back on the old stream URL is refused.
     expect((await player.raw("GET", `/api/play/${first!.id}/events`)).status).toBe(403);
     other.close();
+    gmStream.close();
+  });
+
+  test("anyone can follow a public campaign live, until it's made private", async () => {
+    const { campaignId, sessionId, view } = await seed();
+    const o = (await gmA.post(`/api/campaigns/${campaignId}/observers`, { name: "Nana" })).body;
+    const watcher = await join((await view()).observers![0]!.joinCode!);
+    const watching = await openStream(watcher.player, `/api/watch/${o.id}/events`);
+    const anon = new Client(ctx.app, "10.0.0.7");
+    expect((await anon.raw("GET", `/api/public/${campaignId}/events`)).status).toBe(404);
+
+    await gmA.patch(`/api/campaigns/${campaignId}`, { ...campaignBody, public: true });
+    // The observer it no longer needs is sent away, as when deleted.
+    expect(await watching.rest()).toContain("event: revoked");
+
+    const stream = await openStream(anon, `/api/public/${campaignId}/events`);
+    expect(stream.res.status).toBe(200);
+    const gmStream = await openStream(gmA, `/api/campaigns/${campaignId}/events`);
+    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Gem", value: 500 });
+    expect(await stream.next()).toBeNull();
+    expect(await gmStream.next()).toBeNull();
+
+    await gmA.patch(`/api/campaigns/${campaignId}`, { ...campaignBody, public: false });
+    expect(await stream.rest()).toContain("event: revoked");
+    // The GM's own stream carries on.
+    expect(ctx.app.events.count(campaignId)).toBe(1);
+    expect(await gmStream.next()).toBeNull();
     gmStream.close();
   });
 

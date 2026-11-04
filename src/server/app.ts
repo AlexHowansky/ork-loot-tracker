@@ -21,6 +21,7 @@ import { sessionRoutes } from "./routes/session.ts";
 import { lootRoutes } from "./routes/loot.ts";
 import { playerRoutes } from "./routes/player.ts";
 import { pettyCashRoutes } from "./routes/petty-cash.ts";
+import { publicRoutes } from "./routes/public.ts";
 import type { LiveNotice } from "../shared/types.ts";
 
 const UNSAFE = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -65,6 +66,7 @@ export function createApp(config: AppConfig) {
   lootRoutes(router);
   playerRoutes(router);
   pettyCashRoutes(router);
+  publicRoutes(router);
 
   async function serveUpload(name: string): Promise<Response> {
     const file = Bun.file(join(config.uploadDir, name));

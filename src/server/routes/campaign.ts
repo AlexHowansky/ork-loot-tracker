@@ -1,5 +1,12 @@
 import { and, eq, gt, sql } from "drizzle-orm";
-import { campaign, character, loot, pettyCashEntry, session } from "../db/schema.ts";
+import {
+  campaign,
+  character,
+  loot,
+  observer,
+  pettyCashEntry,
+  session,
+} from "../db/schema.ts";
 import { requireGm } from "../lib/auth.ts";
 import { badRequest } from "../lib/errors.ts";
 import { idParam, readJson, uuidParam, type Router } from "../lib/http.ts";
@@ -16,6 +23,13 @@ import {
 } from "../domain/campaign.ts";
 import { previewSplit, runSplit, undoSplit } from "../domain/loot.ts";
 import { campaignSchema } from "../../shared/schemas.ts";
+
+/**
+ * A campaign's one address: its GM's board, where anyone else may read it,
+ * without signing in, while it's public, and, with a join code in the
+ * fragment, the link that joins it.
+ */
+export const campaignUrl = (appUrl: string, id: string) => `${appUrl}/campaigns/${id}`;
 
 export function campaignRoutes(r: Router) {
   const referenceLimiter = new RateLimiter(60, 60_000);
@@ -41,7 +55,7 @@ export function campaignRoutes(r: Router) {
         forGm: true,
         isOnline: (ch) => ctx.events.isOnline(ch.id, ch.playerId),
       }),
-      joinUrl: `${ctx.config.appUrl}/join`,
+      campaignUrl: campaignUrl(ctx.config.appUrl, c.id),
     };
   });
 
@@ -93,14 +107,39 @@ export function campaignRoutes(r: Router) {
         );
       }
     }
-    const row = ctx.db
-      .update(campaign)
-      .set(input)
-      .where(eq(campaign.id, c.id))
-      .returning()
-      .get();
+    const goingPublic = input.public && !c.public;
+    const { row, dropped } = ctx.db.transaction((tx) => {
+      // A public campaign needs no observers, so making it public drops them.
+      const dropped = goingPublic
+        ? tx
+            .delete(observer)
+            .where(eq(observer.campaignId, c.id))
+            .returning({ id: observer.id })
+            .all()
+        : [];
+      const row = tx
+        .update(campaign)
+        .set(input)
+        .where(eq(campaign.id, c.id))
+        .returning()
+        .get();
+      return { row: row!, dropped };
+    });
+    // Observers' open pages go back to the start, as when one is deleted.
+    let streams = 0;
+    for (const o of dropped) streams += ctx.events.revoke(o.id);
+    // Anyone reading it without signing in loses it once it's private.
+    if (c.public && !input.public) streams += ctx.events.closePublic(c.id);
+    if (c.public !== input.public) {
+      logger.info(input.public ? "campaign made public" : "campaign made private", {
+        requestId: ctx.requestId,
+        campaignId: c.id,
+        observersDeleted: dropped.length,
+        streams,
+      });
+    }
     ctx.changed(c.id);
-    return campaignInfo(row!);
+    return campaignInfo(row);
   });
 
   r.get("/api/campaigns/:id/reference", async (ctx) => {

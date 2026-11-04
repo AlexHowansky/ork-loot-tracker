@@ -11,10 +11,8 @@ import { HomePage } from "./pages/HomePage.tsx";
 import { LoginPage } from "./pages/LoginPage.tsx";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage.tsx";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage.tsx";
-import { JoinPage } from "./pages/JoinPage.tsx";
 import { CampaignPage } from "./pages/CampaignPage.tsx";
-import { PlayPage } from "./pages/PlayPage.tsx";
-import { WatchPage } from "./pages/WatchPage.tsx";
+import { OldSeatLink } from "./pages/PlayPage.tsx";
 import { NotFoundPage } from "./pages/NotFoundPage.tsx";
 
 // Styles come from app.css; injecting a <style> tag would need a looser CSP.
@@ -42,10 +40,10 @@ createRoot(document.getElementById("root")!).render(
                 <Route path="login" element={<LoginPage />} />
                 <Route path="forgot" element={<ForgotPasswordPage />} />
                 <Route path="reset" element={<ResetPasswordPage />} />
-                <Route path="join" element={<JoinPage />} />
                 <Route path="campaigns/:id" element={<CampaignPage />} />
-                <Route path="play/:id" element={<PlayPage />} />
-                <Route path="watch/:id" element={<WatchPage />} />
+                {/* Old addresses, before players used the campaign's. */}
+                <Route path="play/:id" element={<OldSeatLink />} />
+                <Route path="watch/:id" element={<OldSeatLink />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
             </Routes>

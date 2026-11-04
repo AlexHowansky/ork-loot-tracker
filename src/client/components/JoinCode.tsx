@@ -18,7 +18,7 @@ export function JoinCodeStatus({
 }: {
   name: string;
   joinCode?: string | null;
-  /** The join page's public address; the code goes in its fragment. */
+  /** The campaign's address; the code goes in its fragment. */
   joinUrl?: string;
   hasPlayer?: boolean;
   online?: boolean;

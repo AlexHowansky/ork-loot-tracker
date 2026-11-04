@@ -34,8 +34,8 @@ export function PettyCashLedger({ view, mode }: { view: CampaignView; mode: Mode
     const split = view.splits.find((s) => s.id === splitId);
     if (!split) return null;
     const parts: string[] = [];
-    if (split.pettyCash < 0) parts.push(`${money(-split.pettyCash)} kept back to reach the hold`);
-    if (split.pettyCash > 0) parts.push(`${money(split.pettyCash)} above the hold paid out`);
+    if (split.pettyCash < 0) parts.push(`${money(-split.pettyCash)} kept back to reach the reserve`);
+    if (split.pettyCash > 0) parts.push(`${money(split.pettyCash)} above the reserve paid out`);
     if (split.leftover > 0) parts.push(`${money(split.leftover)} that didn't divide evenly`);
     return parts.join(", ");
   }

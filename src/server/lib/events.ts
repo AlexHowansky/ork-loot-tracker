@@ -16,6 +16,8 @@ interface Subscriber {
   gmId?: string;
   /** The seat a player stream is on, so it can end if they lose it. */
   seatId?: string;
+  /** Opened by anyone, without signing in, while the campaign is public. */
+  anonymous?: boolean;
   /** Ends the stream, saying why, when its GM or player is signed out. */
   end?: () => void;
 }
@@ -64,7 +66,13 @@ export function createEventBus() {
     subscribe(
       campaignId: string,
       fn: Listener,
-      opts: { gm?: boolean; gmId?: string; seatId?: string; end?: () => void } = {},
+      opts: {
+        gm?: boolean;
+        gmId?: string;
+        seatId?: string;
+        anonymous?: boolean;
+        end?: () => void;
+      } = {},
     ): () => void {
       let set = listeners.get(campaignId);
       if (!set) listeners.set(campaignId, (set = new Set()));
@@ -73,6 +81,7 @@ export function createEventBus() {
         gm: opts.gm ?? false,
         gmId: opts.gmId,
         seatId: opts.seatId,
+        anonymous: opts.anonymous,
         end: opts.end,
       };
       set.add(sub);
@@ -95,6 +104,20 @@ export function createEventBus() {
      */
     revoke(seatId: string): number {
       return endWhere((s) => s.seatId === seatId);
+    },
+    /**
+     * Ends every anonymous stream on a campaign, for when it stops being
+     * public.
+     */
+    closePublic(campaignId: string): number {
+      let n = 0;
+      for (const s of [...(listeners.get(campaignId) ?? [])]) {
+        if (s.anonymous && s.end) {
+          s.end();
+          n++;
+        }
+      }
+      return n;
     },
     count(campaignId: string): number {
       return listeners.get(campaignId)?.size ?? 0;
@@ -145,13 +168,17 @@ const PING_MS = 25_000;
  * does. It carries no campaign data: each browser refetches its own view,
  * so nothing reaches a player that their normal view wouldn't show. The
  * only extra is a short notice of claims and releases, for a toast. A
- * GM's stream ends with "signedout" when their logins are all ended, and
- * a player's with "revoked" when their seat gets a new join code.
+ * GM's stream ends with "signedout" when their logins are all ended, a
+ * player's with "revoked" when their seat gets a new join code, and an
+ * anonymous one with "revoked" when the campaign stops being public.
  */
 export function sseResponse(
   ctx: Ctx,
   campaignId: string,
-  opts: { gm: true; gmId: string } | { gm: false; presence: Presence },
+  opts:
+    | { gm: true; gmId: string }
+    | { gm: false; presence: Presence }
+    | { gm: false; anonymous: true },
 ): Response {
   ctx.keepOpen();
   const encoder = new TextEncoder();
@@ -173,7 +200,9 @@ export function sseResponse(
         {
           ...(opts.gm
             ? { gm: true, gmId: opts.gmId }
-            : { seatId: opts.presence.seatId }),
+            : "anonymous" in opts
+              ? { anonymous: true }
+              : { seatId: opts.presence.seatId }),
           end: () => {
             // Tells the page why, before the browser tries to reconnect.
             send(`event: ${opts.gm ? "signedout" : "revoked"}\ndata: {}\n\n`);
@@ -181,7 +210,9 @@ export function sseResponse(
           },
         },
       );
-      const leave = opts.gm ? () => {} : ctx.events.arrive(campaignId, opts.presence);
+      // Only players on a seat count as online; anonymous readers don't.
+      const leave =
+        "presence" in opts ? ctx.events.arrive(campaignId, opts.presence) : () => {};
       const ping = setInterval(() => send(": ping\n\n"), PING_MS);
       const onAbort = () => cleanup();
       cleanup = () => {

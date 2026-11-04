@@ -196,7 +196,7 @@ export function LootTable({
   }
 
   function claim(item: LootView) {
-    if (mode.kind === "observer") return;
+    if (mode.kind === "observer" || mode.kind === "public") return;
     if (mode.kind === "gm" || item.quantity > 1) {
       setClaiming(item);
       return;
@@ -209,7 +209,7 @@ export function LootTable({
   }
 
   function release(item: LootView) {
-    if (mode.kind === "observer") return;
+    if (mode.kind === "observer" || mode.kind === "public") return;
     act(
       item,
       () =>

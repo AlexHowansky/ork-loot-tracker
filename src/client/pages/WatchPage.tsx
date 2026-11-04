@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router";
+import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, errorMessage } from "../api.ts";
 import { keys, useWatch } from "../queries.ts";
@@ -10,9 +10,11 @@ import { useToast } from "../components/Toast.tsx";
 import { Icon, faArrowRightFromBracket } from "../components/Icon.tsx";
 import type { WatchView } from "../../shared/types.ts";
 
-/** An observer's read-only view of a campaign. */
-export function WatchPage() {
-  const id = useParams().id ?? "";
+/**
+ * An observer's read-only view of a campaign. It lives at the campaign's
+ * address; `CampaignPage` picks it.
+ */
+export function WatchCampaign({ observerId: id }: { observerId: string }) {
   const { data: view, error, isPending } = useWatch(id);
   const ask = useConfirm();
   const toast = useToast();
@@ -21,8 +23,8 @@ export function WatchPage() {
   useLiveUpdates(`/api/watch/${id}/events`, [keys.watch(id)], () => {
     const name = qc.getQueryData<WatchView>(keys.watch(id))?.campaign.name ?? "the campaign";
     qc.removeQueries({ queryKey: keys.watch(id) });
+    // The campaign's page then shows whatever this browser may still see.
     void qc.invalidateQueries({ queryKey: keys.me });
-    navigate("/");
     toast(
       `Your GM withdrew this browser's access to ${name}. ` +
         "Ask your GM for a new join code to come back.",

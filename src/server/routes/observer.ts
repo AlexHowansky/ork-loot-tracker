@@ -2,7 +2,7 @@ import { and, eq, ne, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
 import { campaign, observer } from "../db/schema.ts";
 import { issueJoinCode, requireGm } from "../lib/auth.ts";
-import { conflict, notFound } from "../lib/errors.ts";
+import { badRequest, conflict, notFound } from "../lib/errors.ts";
 import { readJson, uuidParam, type Router } from "../lib/http.ts";
 import { logger } from "../lib/logger.ts";
 import { ownedCampaign } from "../domain/campaign.ts";
@@ -44,6 +44,12 @@ function assertNameFree(db: Db, campaignId: string, name: string, exceptId = "")
 export function observerRoutes(r: Router) {
   r.post("/api/campaigns/:id/observers", async (ctx) => {
     const c = ownedCampaign(ctx.db, requireGm(ctx).id, uuidParam(ctx));
+    if (c.public) {
+      throw badRequest(
+        "This campaign is public, so anyone with its link can already follow it. " +
+          "Make it private to add observers.",
+      );
+    }
     const input = await readJson(ctx, observerSchema);
     assertNameFree(ctx.db, c.id, input.name);
     const row = ctx.db.transaction((tx) => {

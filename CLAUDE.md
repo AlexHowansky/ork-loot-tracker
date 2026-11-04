@@ -28,7 +28,10 @@ The product specification (terms and features) is in @SPEC.md.
   a GM's logins (a password reset) also calls `events.signOut(gmId)`,
   which sends their streams "signedout" and closes them; a new join code
   (or deleting an observer) calls `events.revoke(seatId)`, which does the
-  same to that seat's player streams with "revoked". The bus is
+  same to that seat's player streams with "revoked". Anyone may open a
+  public campaign's stream without signing in; it counts toward no seat,
+  and making the campaign private calls `events.closePublic(campaignId)`,
+  which sends those streams "revoked" too. The bus is
   in memory, so the server runs as a single process; more than one would
   need a shared bus.
 
@@ -53,7 +56,12 @@ The product specification (terms and features) is in @SPEC.md.
 * Money is stored as integers in the campaign's minor unit, never as floats.
 
 * GMs, campaigns, characters and observers have random UUID ids, since
-  those ids can appear in URLs and shouldn't be guessable by counting.
+  those ids can appear in URLs and shouldn't be guessable by counting. A
+  public campaign's URL (`/campaigns/<id>`, the same page its GM uses,
+  and the base of its join links) relies on this: knowing the id is what
+  lets someone read it. The page
+  tries the GM's API and falls back to `/api/public/:id`; the two stay
+  separate endpoints so neither can leak the other's fields.
   Other tables keep integer ids; they're only reached through an owned
   campaign. The exception is `join_code`, keyed by the code itself, so the
   database keeps codes unique across characters and observers alike.

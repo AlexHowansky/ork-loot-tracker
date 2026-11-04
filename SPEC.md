@@ -26,7 +26,8 @@ An app user invited by a code. The code ties the user to one character.
 Someone who follows a campaign without playing in it. The GM creates an
 observer and gives its join code to whoever should watch. An observer sees
 what players see but is read-only: they have no share in splits and can't
-claim loot.
+claim loot. A public campaign has no observers, since anyone with its link
+can follow it.
 
 ### Campaign
 
@@ -37,7 +38,7 @@ names, start dates, optional background images, and zero or more characters.
 
 A per-campaign amount, in the campaign's currency, set aside for shared
 costs such as tavern stays and healing potions. Splits keep it at the
-campaign's petty cash hold and add to it what they can't divide evenly; the
+campaign's petty cash reserve and add to it what they can't divide evenly; the
 GM records money paid in or out of it by hand. Every change is an entry in
 the petty cash ledger, so the ledger always adds up to the balance. The GM
 and players see it next to the party fund.
@@ -93,9 +94,25 @@ they have claimed from the pool.
   any petty cash ledger entries.
 
 * The campaign form lays its fields out in two columns (one on narrow
-  screens). The left holds name, game system, currency, decimal places and
-  base reference URL; the right holds start date, petty cash hold, allow
-  debt and background image.
+  screens). The left holds name, start date, game system, currency,
+  decimal places and base reference URL; the right holds petty cash reserve,
+  allow debt, public and background image.
+
+* Each campaign has a "Public" checkbox, off by default. A public campaign
+  can be read by anyone with its URL, without signing in or a join code.
+  That is the campaign's one address (`APP_URL` then `/campaigns/` and its
+  id): its GM sees their own board there, and anyone else sees what an
+  observer sees, updated live, and changes nothing; the header says
+  "Public view". To anyone but its GM, a private campaign's URL answers as
+  if there were no such campaign, and suggests signing in if it's theirs.
+  When the box is ticked on a saved campaign, a copy button beside it
+  copies the URL.
+
+* Observers aren't needed while a campaign is public, so making it public
+  deletes them, after the GM confirms when there are any, and signs out
+  their holders as deleting one does. A public campaign has no Observers
+  tab and can't be given observers. Making it private again brings the tab
+  back, empty, and anyone reading it through its URL loses it at once.
 
 * The campaign form has a game system selector, a shortcut that fills in the
   currency label, decimal places and base reference URL; the choice itself
@@ -110,7 +127,7 @@ they have claimed from the pool.
   becomes that character's debt. Debt can't be turned off while any
   character owes.
 
-* Each campaign has a petty cash hold, a whole number (0 or more, 0 by
+* Each campaign has a petty cash reserve, a whole number (0 or more, 0 by
   default) of its currency, set in the campaign form. It is what each split
   keeps in petty cash (see the loot split below).
 
@@ -133,19 +150,34 @@ they have claimed from the pool.
   invalidated. If the player misplaces the code, the GM can create a new one.
   Creating a new code signs out the character's current player at once;
   whoever redeems the new code takes the character over. A page the old
-  player has open goes back to the start, saying the GM gave the character
-  a new join code; one that missed being told says so when next loaded.
-  The copy button beside a code copies a join link (the app's public
-  address, `APP_URL`, with the code in the URL fragment) rather than the
-  bare code. Opening the link joins straight away, as if the code had been
-  entered. If it can't (say the code is used up), the join page shows why,
-  with the code in its box.
+  player has open says the GM gave the character a new join code, and
+  then shows the campaign as to a browser that holds nothing in it (see
+  below); one that missed being told shows that when next loaded.
+  The copy button beside a code copies a join link (the campaign's URL,
+  with the code in the URL fragment) rather than the bare code. Opening
+  the link joins straight away, as if the code had been entered, showing
+  only a loading indicator until the character or observer opens; the
+  join box never appears on the way. If it can't (say the code is used
+  up), the page shows why, with the code in its box, and the public view
+  below it when the campaign is public. A
+  campaign's link only takes that campaign's codes; any other code is
+  refused as if it were unknown. There is no separate join page.
 
-* GMs can add observers to a campaign. Each has a name (required, unique
+* A campaign's URL is also where its players and observers see it; there
+  is no separate address per character or observer. To anyone but its GM,
+  it shows the campaign as the character this browser holds in it, or
+  else as its observer. A browser holding neither sees the public view if
+  the campaign is public, and otherwise a join code box that doesn't name
+  the campaign. Players aren't expected to hold two characters in one
+  campaign; a browser that does sees the one it joined last while the
+  page is open, and otherwise the first by name. Older per-character and
+  per-observer addresses go to the campaign's URL.
+
+* GMs can add observers to a private campaign. Each has a name (required, unique
   among the campaign's observers regardless of case) and a join code that
   works just like a character's: it's used up once redeemed, a new one
-  signs out the current holder at once, and a page they have open goes
-  back to the start, saying so. The GM can rename and delete observers;
+  signs out the current holder at once, and a page they have open says
+  so, as a character's does. The GM can rename and delete observers;
   deleting one signs out its holder the same way.
 
 * An observer sees the whole campaign as a player does (unidentified items
@@ -168,8 +200,10 @@ they have claimed from the pool.
 * Players can provide a code to take ownership of one character in one campaign.
   This session does not expire. One browser can hold several characters, with
   a picker to switch between them, and can choose to forget a character. The
-  picker shows a card per character, with its campaign's image. A browser
-  holding no characters yet shows the join code box on its first screen.
+  picker shows a card per character, with its campaign's image. The join
+  code box for typing a code is on the home page: on its own for a
+  browser holding nothing yet, and otherwise as a card after the others.
+  Joining opens the code's campaign.
   The same browser can hold observers too, by redeeming their codes: the
   picker shows a card per observed campaign, and an observer can be
   forgotten in the same way.
@@ -191,8 +225,9 @@ they have claimed from the pool.
 
 * The campaign page, for the GM and players alike, shows its contents in tabs
   in this order: "Loot", "Petty cash", "Sessions", "Characters" and
-  "Splits". Loot is shown first. The GM also sees an "Observers" tab, after
-  "Characters", listing the campaign's observers with their join codes.
+  "Splits". Loot is shown first. For a private campaign, the GM also sees
+  an "Observers" tab, after "Characters", listing the campaign's observers
+  with their join codes.
 
 * The "Petty cash" tab is the petty cash ledger, newest first, showing each
   entry's date, session, description, amount (negative when paid out) and
@@ -202,7 +237,7 @@ they have claimed from the pool.
   out (e.g. buying goods or services). Adding one needs a session to exist.
   An entry that would take petty cash below zero, as added, edited or
   deleted, is refused. Each split that changes petty cash adds a "Loot
-  split" entry of its own, showing what was kept back for the hold, paid
+  split" entry of its own, showing what was kept back for the reserve, paid
   out above it, or left over; it belongs to no session, can't be edited or
   deleted, and goes when the split is undone. Players see the ledger but
   can't change it.
@@ -331,7 +366,7 @@ they have claimed from the pool.
 
 * A campaign can record at most 90,071,992,547,409 minor units (a hundredth
   of the largest whole number a browser counts exactly), so its totals never
-  lose precision. No single value, petty cash entry or hold may exceed it,
+  lose precision. No single value, petty cash entry or reserve may exceed it,
   and an added or edited item or petty cash entry is refused if it would
   bring the subtotals of all the campaign's loot (whatever its status) plus
   petty cash above it.
@@ -362,7 +397,7 @@ they have claimed from the pool.
 * The GM can, at any time, perform a loot split. This represents selling off
   loot acquired since the last loot split. When a loot split happens:
     * Add the value of all available items plus all claimed items.
-    * Bring petty cash to the hold: if it holds less, take the difference
+    * Bring petty cash to the reserve: if it holds less, take the difference
       from that total first (as far as the total reaches); if it holds
       more, add the excess to the total.
     * Allocate this total across all characters, accounting for the number of
@@ -382,13 +417,13 @@ they have claimed from the pool.
   divided by the number of shares, rounded down to a whole minor unit. A
   character's share is that amount times their shares, before claims are
   subtracted. Whatever doesn't divide evenly is added to petty cash, even
-  when the hold is 0, but only when the split is run; the split preview
+  when the reserve is 0, but only when the split is run; the split preview
   shows how much petty cash is kept back or paid out and how much will be
   left over, and the split history shows what each split divided, kept
   back and left over.
 
 * The board's pool to split and per-share figures, and each character's
-  projected payout, include petty cash above the hold and leave out any
+  projected payout, include petty cash above the reserve and leave out any
   top-up below it. Projected payouts also take off each character's debt.
 
 * Debt repaid in a split is only held back from the debtor's payout; it

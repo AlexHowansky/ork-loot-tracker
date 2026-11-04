@@ -22,6 +22,24 @@ import {
   resetSchema,
 } from "../../shared/schemas.ts";
 import type { Me } from "../../shared/types.ts";
+import type { Db } from "../db/client.ts";
+
+/** The campaign of the character or observer a join code is for. */
+function seatCampaign(db: Db, code: typeof joinCode.$inferSelect): string | undefined {
+  const seat =
+    code.characterId !== null
+      ? db
+          .select({ campaignId: character.campaignId })
+          .from(character)
+          .where(eq(character.id, code.characterId))
+          .get()
+      : db
+          .select({ campaignId: observer.campaignId })
+          .from(observer)
+          .where(eq(observer.id, code.observerId!))
+          .get();
+  return seat?.campaignId;
+}
 
 /** The characters and observers this browser holds. */
 function seats(ctx: Ctx): Omit<Me, "gm"> {
@@ -159,10 +177,16 @@ export function authRoutes(r: Router) {
 
   r.post("/api/join", async (ctx) => {
     joinLimiter.hit(ctx.ip);
-    const { code } = await readJson(ctx, joinSchema);
+    const { code, campaignId } = await readJson(ctx, joinSchema);
     const known = ctx.db.select().from(joinCode).where(eq(joinCode.code, code)).get();
-    if (!known) {
-      logger.warn("join code rejected", { requestId: ctx.requestId, ip: ctx.ip });
+    if (!known || (campaignId && seatCampaign(ctx.db, known) !== campaignId)) {
+      // A code for another campaign is refused just as an unknown one is,
+      // so a link can't be used to learn which campaign a code is for.
+      logger.warn("join code rejected", {
+        requestId: ctx.requestId,
+        ip: ctx.ip,
+        reason: known ? "other campaign" : "unknown",
+      });
       throw new AppError(
         404,
         "That code didn't work. It may have been used already — ask your GM for a new one.",
@@ -201,7 +225,7 @@ export function authRoutes(r: Router) {
         observerId: taken.observer.id,
         playerId: player.id,
       });
-      return { observerId: taken.observer.id };
+      return { observerId: taken.observer.id, campaignId: taken.observer.campaignId };
     }
     const claimed = taken.character;
     ctx.changed(claimed.campaignId);
@@ -210,6 +234,6 @@ export function authRoutes(r: Router) {
       characterId: claimed.id,
       playerId: player.id,
     });
-    return { characterId: claimed.id };
+    return { characterId: claimed.id, campaignId: claimed.campaignId };
   });
 }

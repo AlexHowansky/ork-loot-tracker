@@ -72,13 +72,13 @@ export function SplitModal({
               {preview.data.pettyCash > 0 && (
                 <>
                   , and <Money amount={preview.data.pettyCash} campaign={campaign} className="font-semibold" /> of
-                  petty cash {campaign.pettyCashHold > 0 ? "above its hold " : ""}is paid out with it
+                  petty cash {campaign.pettyCashHold > 0 ? "above its reserve " : ""}is paid out with it
                 </>
               )}
               {preview.data.pettyCash < 0 && (
                 <>
                   , of which <Money amount={-preview.data.pettyCash} campaign={campaign} className="font-semibold" />{" "}
-                  is kept back to top petty cash up to its hold of{" "}
+                  is kept back to top petty cash up to its reserve of{" "}
                   <Money amount={campaign.pettyCashHold} campaign={campaign} className="font-semibold" />
                 </>
               )}

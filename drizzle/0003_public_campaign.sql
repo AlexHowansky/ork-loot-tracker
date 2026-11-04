@@ -1,0 +1,1 @@
+ALTER TABLE `campaign` ADD `public` integer DEFAULT false NOT NULL;

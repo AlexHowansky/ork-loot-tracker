@@ -69,7 +69,9 @@ export function Layout() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const toast = useToast();
-  const playing = useMatch("/play/:id")?.params.id;
+  // A player's board is at the campaign's address.
+  const campaignId = useMatch("/campaigns/:id")?.params.id;
+  const playing = me?.characters.find((c) => c.campaignId === campaignId)?.id;
 
   async function logout() {
     try {
@@ -104,7 +106,7 @@ export function Layout() {
             >
               {me.characters.map((c) => (
                 <li key={c.id}>
-                  <Link to={`/play/${c.id}`}>
+                  <Link to={`/campaigns/${c.campaignId}`}>
                     <span className="font-medium">{c.name}</span>
                     <span className="text-base-content/60 text-xs">{c.campaignName}</span>
                   </Link>
@@ -112,7 +114,7 @@ export function Layout() {
               ))}
               {me.observers.map((o) => (
                 <li key={o.id}>
-                  <Link to={`/watch/${o.id}`}>
+                  <Link to={`/campaigns/${o.campaignId}`}>
                     <span className="font-medium">
                       <Icon icon={faEye} /> {o.campaignName}
                     </span>
@@ -120,11 +122,14 @@ export function Layout() {
                   </Link>
                 </li>
               ))}
-              <li>
-                <Link to="/join">
-                  <Icon icon={faKey} /> Enter another code
-                </Link>
-              </li>
+              {/* The join box is on a player's home page; a GM's lists campaigns. */}
+              {!me.gm && (
+                <li>
+                  <Link to="/">
+                    <Icon icon={faKey} /> Enter another code
+                  </Link>
+                </li>
+              )}
             </Menu>
           )}
           <ThemeButton />

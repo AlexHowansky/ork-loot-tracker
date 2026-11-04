@@ -15,6 +15,7 @@ export const keys = {
   campaign: (id: string) => ["campaign", id] as const,
   play: (id: string) => ["play", id] as const,
   watch: (id: string) => ["watch", id] as const,
+  public: (id: string) => ["public", id] as const,
   reference: (id: string, q: string) => ["reference", id, q] as const,
 };
 
@@ -39,6 +40,13 @@ export const useWatch = (id: string) =>
   useQuery({
     queryKey: keys.watch(id),
     queryFn: () => api.get<WatchView>(`/api/watch/${id}`),
+  });
+
+/** A public campaign, as anyone with its link sees it. */
+export const usePublic = (id: string) =>
+  useQuery({
+    queryKey: keys.public(id),
+    queryFn: () => api.get<CampaignView>(`/api/public/${id}`),
   });
 
 /** Items on the campaign's reference site matching `q`. */

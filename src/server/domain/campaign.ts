@@ -38,6 +38,7 @@ export function campaignInfo(c: Campaign): CampaignInfo {
     pettyCash: c.pettyCash,
     pettyCashHold: c.pettyCashHold,
     allowDebt: c.allowDebt,
+    public: c.public,
   };
 }
 
@@ -258,7 +259,8 @@ export function campaignView(
     pool,
     splits: splitHistory(db, c.id),
     pettyCash: pettyCashLedger(db, c.id),
-    ...(opts.forGm
+    // A public campaign has no observers, and the GM has no tab for them.
+    ...(opts.forGm && !c.public
       ? {
           observers: db
             .select({ ...getTableColumns(observer), joinCode: joinCode.code })

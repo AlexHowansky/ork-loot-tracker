@@ -38,6 +38,8 @@ export interface CampaignInfo {
   pettyCashHold: number;
   /** Whether a split may leave a character owing, carried as debt. */
   allowDebt: boolean;
+  /** Anyone with the campaign's URL may read it, without signing in. */
+  public: boolean;
 }
 
 /** An item found on the campaign's reference site. */
@@ -187,10 +189,11 @@ export interface CampaignView {
   /** GM only: the campaign's observers. */
   observers?: ObserverView[];
   /**
-   * GM only: the join page's public address, from APP_URL. A code goes
-   * after it in the fragment to make a link that fills the code in.
+   * GM only: the campaign's address, from APP_URL, where anyone may read
+   * it while it's public. A join code goes after it in the fragment to
+   * make a link that joins the campaign.
    */
-  joinUrl?: string;
+  campaignUrl?: string;
 }
 
 export interface PlayView extends CampaignView {

@@ -89,6 +89,11 @@ export const campaign = sqliteTable(
     allowDebt: integer("allow_debt", { mode: "boolean" })
       .notNull()
       .default(false),
+    /**
+     * Anyone with the campaign's URL may read it, without signing in.
+     * Observers aren't needed then, so a public campaign has none.
+     */
+    public: integer("public", { mode: "boolean" }).notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
