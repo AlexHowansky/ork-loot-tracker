@@ -103,10 +103,13 @@ they have claimed from the pool.
   That is the campaign's one address (`APP_URL` then `/campaigns/` and its
   id): its GM sees their own board there, and anyone else sees what an
   observer sees, updated live, and changes nothing; the header says
-  "Public view". To anyone but its GM, a private campaign's URL answers as
-  if there were no such campaign, and suggests signing in if it's theirs.
-  When the box is ticked on a saved campaign, a copy button beside it
-  copies the URL.
+  "Public view". A browser holding no characters or observers gets a
+  "Join" button in the nav bar there, opening a join code box for that
+  campaign only; joining shows the campaign as the character or observer
+  taken, at the same URL. To anyone but its GM, a private
+  campaign's URL answers as if there were no such campaign, and suggests
+  signing in if it's theirs. When the box is ticked on a saved campaign,
+  a copy button beside it copies the URL.
 
 * Observers aren't needed while a campaign is public, so making it public
   deletes them, after the GM confirms when there are any, and signs out
@@ -200,13 +203,14 @@ they have claimed from the pool.
 * Players can provide a code to take ownership of one character in one campaign.
   This session does not expire. One browser can hold several characters, with
   a picker to switch between them, and can choose to forget a character. The
-  picker shows a card per character, with its campaign's image. The join
-  code box for typing a code is on the home page: on its own for a
-  browser holding nothing yet, and otherwise as a card after the others.
-  Joining opens the code's campaign.
+  picker shows a card per character, with its campaign's image. A browser
+  holding nothing yet has the join code box on its home page; joining
+  opens the code's campaign.
   The same browser can hold observers too, by redeeming their codes: the
   picker shows a card per observed campaign, and an observer can be
-  forgotten in the same way.
+  forgotten in the same way. Once a browser holds any, the nav bar has a
+  Characters menu listing only them, with a "Join" button to its right
+  that opens the join code box in a modal, on any page.
 
 * Players see the whole campaign: every loot item, every character's shares
   and projected payout, and the split history. Join codes are GM-only.

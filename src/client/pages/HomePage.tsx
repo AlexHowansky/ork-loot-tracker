@@ -60,15 +60,6 @@ export function HomePage() {
             </div>
           </Link>
         ))}
-        <div className="card col-span-2 bg-base-100 shadow sm:col-span-1">
-          <div className="card-body p-4">
-            <h2 className="card-title">Join a campaign</h2>
-            <p className="text-sm text-base-content/70">
-              Enter a code from your GM for another character, or to observe a campaign.
-            </p>
-            <JoinForm autoFocus={false} />
-          </div>
-        </div>
       </div>
     </div>
   );

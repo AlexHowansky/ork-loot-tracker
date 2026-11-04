@@ -16,7 +16,7 @@ export function Modal({
   title: string;
   onClose: () => void;
   children: ReactNode;
-  /** Buttons for the modal-action row. */
+  /** Buttons for the modal-action row; null when the body has its own. */
   actions: ReactNode;
   /** When set, the body is a form and this handles its submission. */
   onSubmit?: () => void;
@@ -58,7 +58,7 @@ export function Modal({
         </button>
       </div>
       <div className="py-3">{children}</div>
-      <div className="modal-action mt-2">{actions}</div>
+      {actions != null && <div className="modal-action mt-2">{actions}</div>}
     </>
   );
 

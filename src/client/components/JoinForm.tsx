@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, errorMessage } from "../api.ts";
 import { keys } from "../queries.ts";
 import { Field, withError } from "./Field.tsx";
+import { CancelButton } from "./SubmitButton.tsx";
 
 /** The join code a campaign's link carries in its fragment, if any. */
 export function fromFragment(hash: string) {
@@ -24,6 +25,7 @@ export function useJoin(campaignId?: string, initialError: unknown = null) {
   /** The seat the last code took, once this browser knows it holds it. */
   const [joined, setJoined] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const qc = useQueryClient();
 
   async function join(value: string, replace = false) {
@@ -39,8 +41,10 @@ export function useJoin(campaignId?: string, initialError: unknown = null) {
       });
       await qc.invalidateQueries({ queryKey: keys.me });
       setJoined("characterId" in res ? res.characterId : res.observerId);
-      // The campaign's page shows the character or observer just taken.
-      navigate(`/campaigns/${res.campaignId}`, { replace });
+      // The campaign's page shows the character or observer just taken;
+      // joining from that page itself just shows it anew.
+      const to = `/campaigns/${res.campaignId}`;
+      navigate(to, { replace: replace || to === pathname });
     } catch (err) {
       setError(err);
     } finally {
@@ -61,13 +65,14 @@ export function JoinForm({
   campaignId,
   initialCode = "",
   initialError,
-  autoFocus = true,
+  onCancel,
 }: {
   campaignId?: string;
   /** A code the page already tried, with `initialError` saying why it failed. */
   initialCode?: string;
   initialError?: unknown;
-  autoFocus?: boolean;
+  /** Adds a Cancel button beside Join, as in a modal. */
+  onCancel?: () => void;
 }) {
   const [code, setCode] = useState(initialCode);
   const { join, busy, error } = useJoin(campaignId, initialError);
@@ -83,7 +88,9 @@ export function JoinForm({
       <Field label="Join code" error={message}>
         <input
           className={withError("input w-full font-mono uppercase tracking-widest", message)}
-          autoFocus={autoFocus}
+          autoFocus
+          // A modal focuses this once it's open; autoFocus fires too soon.
+          data-autofocus
           autoComplete="off"
           spellCheck={false}
           placeholder="ABCDE-FGHJK"
@@ -92,6 +99,7 @@ export function JoinForm({
         />
       </Field>
       <div className="card-actions justify-end mt-2">
+        {onCancel && <CancelButton onClick={onCancel} />}
         <button className="btn btn-primary" disabled={busy || !code.trim()}>
           {busy && <span className="loading loading-spinner loading-sm" />}
           Join

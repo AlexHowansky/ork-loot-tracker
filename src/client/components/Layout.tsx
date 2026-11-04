@@ -6,13 +6,14 @@ import { useMe, usePlay } from "../queries.ts";
 import { applyTheme, storedTheme, type ThemeChoice } from "../theme.ts";
 import { useToast } from "./Toast.tsx";
 import { Menu } from "./Menu.tsx";
+import { NavSlotContext } from "./NavSlot.tsx";
+import { JoinButton } from "./JoinButton.tsx";
 import {
   Icon,
   faArrowRightFromBracket,
   faCircleHalfStroke,
   faDragon,
   faEye,
-  faKey,
   faMoon,
   faSun,
   faTriangleExclamation,
@@ -72,6 +73,7 @@ export function Layout() {
   // A player's board is at the campaign's address.
   const campaignId = useMatch("/campaigns/:id")?.params.id;
   const playing = me?.characters.find((c) => c.campaignId === campaignId)?.id;
+  const [navSlot, setNavSlot] = useState<HTMLElement | null>(null);
 
   async function logout() {
     try {
@@ -122,16 +124,11 @@ export function Layout() {
                   </Link>
                 </li>
               ))}
-              {/* The join box is on a player's home page; a GM's lists campaigns. */}
-              {!me.gm && (
-                <li>
-                  <Link to="/">
-                    <Icon icon={faKey} /> Enter another code
-                  </Link>
-                </li>
-              )}
             </Menu>
           )}
+          {me && me.characters.length + me.observers.length > 0 && <JoinButton />}
+          {/* A page's own controls, e.g. the public view's Join button. */}
+          <span ref={setNavSlot} className="contents" />
           <ThemeButton />
           {me?.gm ? (
             <button type="button" className="btn btn-ghost btn-sm" onClick={logout}>
@@ -146,7 +143,9 @@ export function Layout() {
         </div>
       </header>
       <main className="p-3 sm:p-4">
-        <Outlet />
+        <NavSlotContext value={navSlot}>
+          <Outlet />
+        </NavSlotContext>
       </main>
     </div>
   );
