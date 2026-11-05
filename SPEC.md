@@ -278,6 +278,15 @@ they have claimed from the pool.
     * A split leaves it as it is, available or claimed, so it can be sold
       at its real value once identified.
 
+* A pending item is known only to the GM: players, observers and the
+  public view never see it (the server never sends it, and sessions'
+  item counts leave it out). It is worth nothing in the pool, party fund
+  and projected payouts, can't be claimed and is left alone by splits.
+  The GM's loot table strikes out its subtotal and leaves it out of the
+  table's total, as for an unidentified item. Changing its status, e.g.
+  to available, reveals it. "Save and add another" keeps the status, so
+  a haul can be preloaded as pending.
+
 * When the campaign's base reference URL is a site the app knows how to
   search (for now the Archives of Nethys at https://2e.aonprd.com/ and
   https://2e.aonsrd.com/), the loot form's link field suggests up to 10
@@ -295,10 +304,10 @@ they have claimed from the pool.
 
 * The loot table shows each item's status as a pill on its own, and the
   character who claimed or bought it in a separate "Claim" column.
-  Each pill has an icon: a tag for available, a group of people for party, a
-  hand for claimed, a person for bought, a sack of money for sold and a trash
-  can for abandoned. Hovering over a status pill shows what that status
-  means, as described below.
+  Each pill has an icon: an hourglass for pending, a tag for available, a
+  group of people for party, a hand for claimed, a person for bought, a
+  sack of money for sold and a trash can for abandoned. Hovering over a
+  status pill shows what that status means, as described below.
 
 * For the GM, each status pill is also a button. Clicking it opens a menu
   of the other statuses, and choosing one changes the item's status:
@@ -320,16 +329,17 @@ they have claimed from the pool.
 * The loot table is sorted by item name, A to Z, until another column is
   chosen. Clicking any column header but the actions sorts the table by
   it, ascending; clicking it again reverses the order. An arrow marks the
-  sorted column and its direction. Status sorts as available, party,
-  claimed, bought, sold, abandoned, and Session by the session's date.
+  sorted column and its direction. Status sorts as pending, available,
+  party, claimed, bought, sold, abandoned, and Session by the session's
+  date.
   Blank cells (no location, value or claimant, or a value hidden from players
   because the item is unidentified) sort last either way. Ties fall back
   to the item name. The choice lasts while the campaign page is open,
   across tab changes.
 
 * The loot table filters by session and by status: "Pool" (available, party
-  and claimed), "Available" (not yet claimed), "Gone" (sold, bought and
-  abandoned) and "All".
+  and claimed), "Available" (not yet claimed), "Pending" (for the GM only),
+  "Gone" (sold, bought and abandoned) and "All".
 
 * The loot table also filters by who claimed or bought an item: "Anyone",
   "Unclaimed" (no character) or one character, listed by name.
@@ -349,6 +359,9 @@ they have claimed from the pool.
   leaves the sort as it is, and is disabled when there's nothing to clear.
 
 * Item statuses are as follows:
+    * Pending: This item has not yet been encountered in-game. The GM can use
+               this to preload items in bulk and then reveal them as they are
+               discovered.
     * Available: This item is in the current loot pool, is free to be claimed,
                  and will be sold during the next split. This is the default for
                  new items.

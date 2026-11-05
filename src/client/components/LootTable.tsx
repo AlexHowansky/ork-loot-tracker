@@ -26,12 +26,14 @@ import {
 } from "./Icon.tsx";
 import type { Mode } from "./Board.tsx";
 
-export type StatusFilter = "pool" | "available" | "history" | "all";
+export type StatusFilter = "pool" | "available" | "pending" | "history" | "all";
 
 const FILTER: Record<StatusFilter, (s: LootStatus) => boolean> = {
   pool: (s) => s === "available" || s === "party" || s === "claimed",
   // Available items are in the pool and nobody has claimed them yet.
   available: (s) => s === "available",
+  // Only the GM is ever sent pending items.
+  pending: (s) => s === "pending",
   history: (s) => s === "sold" || s === "bought" || s === "abandoned",
   all: () => true,
 };
@@ -39,6 +41,7 @@ const FILTER: Record<StatusFilter, (s: LootStatus) => boolean> = {
 const FILTER_LABEL: Record<StatusFilter, string> = {
   pool: "Pool",
   available: "Available",
+  pending: "Pending",
   history: "Gone",
   all: "All",
 };
@@ -164,8 +167,11 @@ export function LootTable({
       // Ties fall back to name, then session, then entry order.
       return byKey || byName.compare(a.name, b.name) || a.sessionId - b.sessionId || a.id - b.id;
     });
-  // Unidentified items count as nothing, as they do in the pool.
-  const shownTotal = rows.reduce((n, l) => n + (l.unidentified ? 0 : l.subtotal), 0);
+  // Unidentified and pending items count as nothing, as they do in the pool.
+  const shownTotal = rows.reduce(
+    (n, l) => n + (l.unidentified || l.status === "pending" ? 0 : l.subtotal),
+    0,
+  );
 
   async function act(item: LootView, action: () => Promise<unknown>, done: string) {
     setBusyId(item.id);
@@ -289,14 +295,14 @@ export function LootTable({
     );
   };
 
-  const claimButton = (item: LootView) => (
-    <button type="button" className="btn btn-xs" disabled={busyId === item.id} onClick={() => claim(item)}>
+  const claimButton = (item: LootView, className = "") => (
+    <button type="button" className={`btn btn-xs ${className}`} disabled={busyId === item.id} onClick={() => claim(item)}>
       <Icon icon={faHand} /> Claim
     </button>
   );
 
-  const releaseButton = (item: LootView) => (
-    <button type="button" className="btn btn-xs btn-ghost" disabled={busyId === item.id} onClick={() => release(item)}>
+  const releaseButton = (item: LootView, className = "") => (
+    <button type="button" className={`btn btn-xs btn-ghost ${className}`} disabled={busyId === item.id} onClick={() => release(item)}>
       <Icon icon={faArrowRotateLeft} /> Release
     </button>
   );
@@ -305,7 +311,10 @@ export function LootTable({
     <div>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <div role="tablist" className="tabs tabs-box tabs-sm">
-          {(["pool", "available", "history", "all"] as const).map((f) => (
+          {(gm
+            ? (["pool", "available", "pending", "history", "all"] as const)
+            : (["pool", "available", "history", "all"] as const)
+          ).map((f) => (
             <button
               key={f}
               type="button"
@@ -470,7 +479,12 @@ export function LootTable({
                         <Money
                           amount={item.subtotal}
                           campaign={campaign}
-                          className={item.unidentified ? "text-base-content/50 line-through" : undefined}
+                          className={
+                            // Neither counts towards the pool.
+                            item.unidentified || item.status === "pending"
+                              ? "text-base-content/50 line-through"
+                              : undefined
+                          }
                         />
                       )}
                     </td>
@@ -496,11 +510,13 @@ export function LootTable({
                     <td className="text-right whitespace-nowrap">
                       {gm ? (
                         <>
-                          {item.status === "available" && canClaim && claimButton(item)}
-                          {item.status === "claimed" && releaseButton(item)}
+                          {/* A gap keeps them clear of the edit button. */}
+                          {item.status === "available" && canClaim && claimButton(item, "me-2")}
+                          {item.status === "claimed" && releaseButton(item, "me-2")}
                           <button
                             type="button"
-                            className="btn btn-ghost btn-xs btn-square"
+                            className="btn btn-ghost btn-xs btn-square tooltip"
+                            data-tip="Edit"
                             aria-label={`Edit ${item.name}`}
                             onClick={() => setEditing(item)}
                           >
@@ -508,7 +524,8 @@ export function LootTable({
                           </button>
                           <button
                             type="button"
-                            className="btn btn-ghost btn-xs btn-square"
+                            className="btn btn-ghost btn-xs btn-square tooltip"
+                            data-tip="Delete"
                             aria-label={`Delete ${item.name}`}
                             disabled={busyId === item.id}
                             onClick={() => remove(item)}

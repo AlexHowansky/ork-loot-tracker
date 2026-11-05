@@ -3,6 +3,7 @@ import { LOOT_STATUSES, STATUS_DESCRIPTION, STATUS_LABEL, type LootStatus } from
 import {
   faChevronDown,
   faHand,
+  faHourglassHalf,
   faPeopleGroup,
   faSackDollar,
   faTag,
@@ -13,6 +14,7 @@ import {
 import { Menu } from "./Menu.tsx";
 
 const COLOR: Record<LootStatus, string> = {
+  pending: "badge-secondary",
   available: "badge-success",
   party: "badge-info",
   claimed: "badge-warning",
@@ -22,6 +24,7 @@ const COLOR: Record<LootStatus, string> = {
 };
 
 const ICON: Record<LootStatus, IconDefinition> = {
+  pending: faHourglassHalf,
   available: faTag,
   party: faPeopleGroup,
   claimed: faHand,

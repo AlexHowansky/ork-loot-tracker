@@ -92,12 +92,13 @@ export function ObserverTable({ view }: { view: CampaignView }) {
                   />
                 </td>
                 <td className="text-right whitespace-nowrap">
-                  <button type="button" className="btn btn-ghost btn-xs" onClick={() => newCode(o)}>
+                  <button type="button" className="btn btn-ghost btn-xs me-2" onClick={() => newCode(o)}>
                     <Icon icon={faArrowsRotate} /> New code
                   </button>
                   <button
                     type="button"
-                    className="btn btn-ghost btn-xs btn-square"
+                    className="btn btn-ghost btn-xs btn-square tooltip"
+                    data-tip="Edit"
                     aria-label={`Edit ${o.name}`}
                     onClick={() => setEditing(o)}
                   >
@@ -105,7 +106,8 @@ export function ObserverTable({ view }: { view: CampaignView }) {
                   </button>
                   <button
                     type="button"
-                    className="btn btn-ghost btn-xs btn-square"
+                    className="btn btn-ghost btn-xs btn-square tooltip"
+                    data-tip="Delete"
                     aria-label={`Delete ${o.name}`}
                     onClick={() => remove(o)}
                   >

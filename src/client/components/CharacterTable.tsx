@@ -131,21 +131,22 @@ export function CharacterTable({
                       </td>
                     )}
                     <td className="text-right whitespace-nowrap">
-                      <button type="button" className="btn btn-ghost btn-xs" onClick={() => onShowLoot(c.id)}>
+                      <button type="button" className="btn btn-ghost btn-xs me-2" onClick={() => onShowLoot(c.id)}>
                         Show loot
                       </button>
                       {gm && (
                         <>
                           <button
                             type="button"
-                            className="btn btn-ghost btn-xs"
+                            className="btn btn-ghost btn-xs me-2"
                             onClick={() => newCode(c)}
                           >
                             <Icon icon={faArrowsRotate} /> New code
                           </button>
                           <button
                             type="button"
-                            className="btn btn-ghost btn-xs btn-square"
+                            className="btn btn-ghost btn-xs btn-square tooltip"
+                            data-tip="Edit"
                             aria-label={`Edit ${c.name}`}
                             onClick={() => setEditing(c)}
                           >
@@ -153,7 +154,8 @@ export function CharacterTable({
                           </button>
                           <button
                             type="button"
-                            className="btn btn-ghost btn-xs btn-square"
+                            className="btn btn-ghost btn-xs btn-square tooltip"
+                            data-tip="Delete"
                             aria-label={`Delete ${c.name}`}
                             onClick={() => remove(c)}
                           >

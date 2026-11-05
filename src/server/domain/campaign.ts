@@ -23,6 +23,7 @@ import type {
   PoolView,
   SplitView,
 } from "../../shared/types.ts";
+import { HIDDEN_STATUSES } from "../../shared/status.ts";
 import { allocate, pettyCashFlow } from "./split.ts";
 import { badRequest, notFound } from "../lib/errors.ts";
 
@@ -112,7 +113,8 @@ export function computePool(
   let claimedTotal = 0;
   const claimedBy = new Map<string, number>();
   for (const r of rows) {
-    // Unidentified items are worth nothing until the GM identifies them.
+    // Unidentified items are worth nothing until the GM identifies them,
+    // and pending ones (like sold or abandoned items) are outside the pool.
     if (r.unidentified) continue;
     const sub = subtotal(r.quantity, r.value, r.marketPct);
     if (r.status === "available") sellable += sub;
@@ -224,8 +226,10 @@ export function campaignView(
     .all();
   const rows = campaignLoot(db, c.id);
   const { pool, allocations } = computePool(rows, chars, c);
+  // Pending items haven't been found yet, so only the GM knows of them.
+  const shown = opts.forGm ? rows : rows.filter((r) => !HIDDEN_STATUSES.includes(r.status));
   const counts = new Map<number, number>();
-  for (const r of rows) counts.set(r.sessionId, (counts.get(r.sessionId) ?? 0) + 1);
+  for (const r of shown) counts.set(r.sessionId, (counts.get(r.sessionId) ?? 0) + 1);
 
   return {
     campaign: campaignInfo(c),
@@ -255,7 +259,7 @@ export function campaignView(
       notes: s.notes,
       itemCount: counts.get(s.id) ?? 0,
     })),
-    loot: rows.map((r) => lootView(r, opts.forGm)),
+    loot: shown.map((r) => lootView(r, opts.forGm)),
     pool,
     splits: splitHistory(db, c.id),
     pettyCash: pettyCashLedger(db, c.id),

@@ -11,6 +11,7 @@ export {
   faDragon,
   faEye,
   faHand,
+  faHourglassHalf,
   faHandshake,
   faImage,
   faMoon,

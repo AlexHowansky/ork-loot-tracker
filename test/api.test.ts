@@ -927,6 +927,47 @@ describe("loot split", () => {
     expect(now.pool.sellable).toBe(4500);
   });
 
+  test("pending items are hidden from all but the GM and left out of splits", async () => {
+    const { campaignId, sessionId, characterIds, view } = await seed();
+    const [amiri] = characterIds as [string];
+    const amiriCode = (await view()).characters.find((c) => c.id === amiri)!.joinCode!;
+    const { player } = await join(amiriCode);
+    const add = (body: object) => gmA.post(`/api/sessions/${sessionId}/loot`, body);
+    await add({ name: "Sword", value: 2000 });
+    const idol = (await add({ name: "Golden idol", value: 8000, status: "pending" })).body;
+    expect(idol.status).toBe("pending");
+
+    // The GM sees it, but it isn't in the pool.
+    let gmView = await view();
+    expect(gmView.loot.map((l) => l.name).sort()).toEqual(["Golden idol", "Sword"]);
+    expect(gmView.sessions[0]!.itemCount).toBe(2);
+    expect(gmView.pool.sellable).toBe(1000);
+
+    // Players, observers and public readers never hear of it.
+    const play = (await player.get<PlayView>(`/api/play/${amiri}`)).body;
+    expect(play.loot.map((l) => l.name)).toEqual(["Sword"]);
+    expect(play.sessions[0]!.itemCount).toBe(1);
+    expect(JSON.stringify(play)).not.toContain("Golden idol");
+    await gmA.patch(`/api/campaigns/${campaignId}`, { ...campaignBody, public: true });
+    const pub = (await new Client(ctx.app).get<CampaignView>(`/api/public/${campaignId}`)).body;
+    expect(JSON.stringify(pub)).not.toContain("Golden idol");
+
+    // Nobody can claim it, and a split leaves it alone.
+    const mine = await player.post(`/api/play/${amiri}/claim`, { lootId: idol.id, quantity: 1 });
+    expect(mine.status).toBe(409);
+    const gmClaim = await gmA.post(`/api/loot/${idol.id}/claim`, { characterId: amiri, quantity: 1 });
+    expect(gmClaim.status).toBe(409);
+    expect((await gmA.post(`/api/campaigns/${campaignId}/split`)).status).toBe(200);
+    gmView = await view();
+    expect(gmView.loot.find((l) => l.id === idol.id)!.status).toBe("pending");
+
+    // Revealed, it joins the pool.
+    await gmA.patch(`/api/loot/${idol.id}`, { status: "available" });
+    expect((await view()).pool.sellable).toBe(4000);
+    const after = (await player.get<PlayView>(`/api/play/${amiri}`)).body;
+    expect(after.loot.some((l) => l.name === "Golden idol")).toBe(true);
+  });
+
   test("the latest split can be undone", async () => {
     const { campaignId, sessionId, characterIds, view } = await seed();
     const [amiri] = characterIds as [string];

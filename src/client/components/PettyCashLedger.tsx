@@ -126,7 +126,8 @@ export function PettyCashLedger({ view, mode }: { view: CampaignView; mode: Mode
                           <>
                             <button
                               type="button"
-                              className="btn btn-ghost btn-xs btn-square"
+                              className="btn btn-ghost btn-xs btn-square tooltip"
+                              data-tip="Edit"
                               aria-label={`Edit entry ${e.description}`}
                               onClick={() => setEditing(e)}
                             >
@@ -134,7 +135,8 @@ export function PettyCashLedger({ view, mode }: { view: CampaignView; mode: Mode
                             </button>
                             <button
                               type="button"
-                              className="btn btn-ghost btn-xs btn-square"
+                              className="btn btn-ghost btn-xs btn-square tooltip"
+                              data-tip="Delete"
                               aria-label={`Delete entry ${e.description}`}
                               onClick={() => remove(e)}
                             >

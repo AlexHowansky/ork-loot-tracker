@@ -1,4 +1,5 @@
 export const LOOT_STATUSES = [
+  "pending",
   "available",
   "party",
   "claimed",
@@ -16,10 +17,14 @@ export const POOL_STATUSES: readonly LootStatus[] = [
   "claimed",
 ];
 
+/** Statuses hidden from everyone but the GM. */
+export const HIDDEN_STATUSES: readonly LootStatus[] = ["pending"];
+
 /** Statuses that tie an item to a character. */
 export const CHARACTER_STATUSES: readonly LootStatus[] = ["claimed", "bought"];
 
 export const STATUS_LABEL: Record<LootStatus, string> = {
+  pending: "Pending",
   available: "Available",
   party: "Party",
   claimed: "Claimed",
@@ -30,6 +35,8 @@ export const STATUS_LABEL: Record<LootStatus, string> = {
 
 /** What each status means, as described in SPEC.md. */
 export const STATUS_DESCRIPTION: Record<LootStatus, string> = {
+  pending:
+    "Not yet found in-game. Hidden from players until the GM reveals it.",
   available:
     "In the current loot pool, free to be claimed, and will be sold during the next split.",
   party:

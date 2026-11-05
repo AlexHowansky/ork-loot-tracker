@@ -87,14 +87,15 @@ export function SessionTable({
                   <td className="max-w-md text-sm whitespace-pre-line text-base-content/70">{s.notes}</td>
                   <td className="text-right tabular-nums">{s.itemCount}</td>
                   <td className="text-right whitespace-nowrap">
-                    <button type="button" className="btn btn-ghost btn-xs" onClick={() => onShowLoot(s.id)}>
+                    <button type="button" className="btn btn-ghost btn-xs me-2" onClick={() => onShowLoot(s.id)}>
                       Show loot
                     </button>
                     {gm && (
                       <>
                         <button
                           type="button"
-                          className="btn btn-ghost btn-xs btn-square"
+                          className="btn btn-ghost btn-xs btn-square tooltip"
+                          data-tip="Edit"
                           aria-label={`Edit session ${s.date}`}
                           onClick={() => setEditing(s)}
                         >
@@ -102,7 +103,8 @@ export function SessionTable({
                         </button>
                         <button
                           type="button"
-                          className="btn btn-ghost btn-xs btn-square"
+                          className="btn btn-ghost btn-xs btn-square tooltip"
+                          data-tip="Delete"
                           aria-label={`Delete session ${s.date}`}
                           onClick={() => remove(s)}
                         >
