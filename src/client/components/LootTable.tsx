@@ -2,7 +2,7 @@ import { useState } from "react";
 import { api, errorMessage } from "../api.ts";
 import { useRefresh } from "../queries.ts";
 import type { CampaignView, LootView } from "../../shared/types.ts";
-import { CHARACTER_STATUSES, LOOT_STATUSES, STATUS_LABEL, type LootStatus } from "../../shared/status.ts";
+import { CHARACTER_STATUSES, FINAL_STATUSES, LOOT_STATUSES, STATUS_LABEL, type LootStatus } from "../../shared/status.ts";
 import { Money } from "./Money.tsx";
 import { StatusBadge, StatusMenu } from "./StatusBadge.tsx";
 import { LootForm } from "./LootForm.tsx";
@@ -268,7 +268,7 @@ export function LootTable({
   );
 
   const statusPill = (item: LootView, tip: "left" | "right" = "left") =>
-    gm ? (
+    gm && !FINAL_STATUSES.includes(item.status) ? (
       <StatusMenu
         status={item.status}
         itemName={item.name}

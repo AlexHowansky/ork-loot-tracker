@@ -20,6 +20,17 @@ export const POOL_STATUSES: readonly LootStatus[] = [
 /** Statuses hidden from everyone but the GM. */
 export const HIDDEN_STATUSES: readonly LootStatus[] = ["pending"];
 
+/**
+ * Statuses for items that are gone from the pool. The loot table shows
+ * them as a plain pill, even to the GM, so they aren't changed by accident;
+ * the edit form can still change them.
+ */
+export const FINAL_STATUSES: readonly LootStatus[] = [
+  "bought",
+  "sold",
+  "abandoned",
+];
+
 /** Statuses that tie an item to a character. */
 export const CHARACTER_STATUSES: readonly LootStatus[] = ["claimed", "bought"];
 

@@ -346,7 +346,9 @@ they have claimed from the pool.
       can't be chosen while no character has shares, nor bought while
       the campaign has no characters.
     * Any other status clears the item's character.
-  Players see a plain pill that can't be clicked.
+  Players see a plain pill that can't be clicked. So do GMs for an item
+  that's bought, sold or abandoned, so that an item that's gone isn't
+  changed by accident; the GM can still change it in the edit form.
 
 * When the loot table shows all sessions, a "Session" column after "Claim"
   shows the session's date, or a dash for an item with no session. Hovering
