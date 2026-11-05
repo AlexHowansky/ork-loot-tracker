@@ -29,7 +29,9 @@ function ThemeButton() {
   return (
     <button
       type="button"
-      className="btn btn-ghost btn-sm btn-square tooltip tooltip-bottom"
+      // Space, not a rule, sets the theme and account apart from the
+      // campaign controls before it.
+      className="btn btn-ghost btn-sm btn-square tooltip tooltip-bottom ml-2"
       data-tip={THEME_LABEL[theme]}
       aria-label={THEME_LABEL[theme]}
       onClick={() => {
