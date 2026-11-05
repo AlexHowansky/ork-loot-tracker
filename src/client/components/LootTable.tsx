@@ -269,7 +269,7 @@ export function LootTable({
     st === "claimed" ? !claimants.length : !view.characters.length,
   );
 
-  const statusPill = (item: LootView, tip: "left" | "right" = "left") =>
+  const statusPill = (item: LootView, tip: "top" | "right" = "top") =>
     gm && !FINAL_STATUSES.includes(item.status) ? (
       <StatusMenu
         status={item.status}

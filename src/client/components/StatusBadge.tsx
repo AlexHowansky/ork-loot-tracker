@@ -35,13 +35,13 @@ const ICON: Record<LootStatus, IconDefinition> = {
 
 /** Which side the description tooltip opens on, so it stays inside the table. */
 const TIP_SIDE = {
-  left: "tooltip-left",
+  top: "tooltip-top",
   right: "tooltip-right",
 } as const;
 
 const PILL = "badge badge-sm badge-soft gap-1 ps-1.5 whitespace-nowrap";
 
-export function StatusBadge({ status, tip = "left" }: { status: LootStatus; tip?: keyof typeof TIP_SIDE }) {
+export function StatusBadge({ status, tip = "top" }: { status: LootStatus; tip?: keyof typeof TIP_SIDE }) {
   return (
     <span className={`tooltip ${TIP_SIDE[tip]}`} data-tip={STATUS_DESCRIPTION[status]}>
       <span
@@ -65,7 +65,7 @@ export function StatusMenu({
   itemName,
   onChoose,
   unavailable = [],
-  tip = "left",
+  tip = "top",
 }: {
   status: LootStatus;
   itemName: string;
@@ -75,7 +75,7 @@ export function StatusMenu({
 }) {
   return (
     <Menu
-      align={tip === "left" ? "end" : "start"}
+      align={tip === "right" ? "start" : "end"}
       ariaLabel={`Status of ${itemName}: ${STATUS_LABEL[status]}. Change status`}
       buttonClass={`${PILL} ${COLOR[status]} cursor-pointer hover:brightness-90`}
       menuClass="w-40 font-normal"
