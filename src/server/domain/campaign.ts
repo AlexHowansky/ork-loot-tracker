@@ -8,7 +8,7 @@ import {
   joinCode,
   loot,
   observer,
-  pettyCashEntry,
+  cashEntry,
   session,
   split,
   splitShare,
@@ -22,12 +22,12 @@ import type {
   CampaignSummary,
   CampaignView,
   LootView,
-  PettyCashEntryView,
+  CashEntryView,
   PoolView,
   SplitView,
 } from "../../shared/types.ts";
 import { HIDDEN_STATUSES } from "../../shared/status.ts";
-import { allocate, pettyCashFlow } from "./split.ts";
+import { allocate, cashFlow } from "./split.ts";
 import { badRequest, notFound } from "../lib/errors.ts";
 
 export function campaignInfo(c: Campaign): CampaignInfo {
@@ -39,8 +39,8 @@ export function campaignInfo(c: Campaign): CampaignInfo {
     currencyLabel: c.currencyLabel,
     currencyDecimals: c.currencyDecimals,
     baseReferenceUrl: c.baseReferenceUrl,
-    pettyCash: c.pettyCash,
-    pettyCashHold: c.pettyCashHold,
+    cash: c.cash,
+    cashHold: c.cashHold,
     allowDebt: c.allowDebt,
     public: c.public,
   };
@@ -118,15 +118,15 @@ export function campaignLoot(db: Db, campaignId: string): Loot[] {
 }
 
 /**
- * Pool totals plus each character's projected split right now. Petty cash
+ * Pool totals plus each character's projected split right now. Cash
  * above its hold is divided along with the loot, a shortfall below it is
- * taken from the loot first (see `pettyCashFlow`), and each character's
+ * taken from the loot first (see `cashFlow`), and each character's
  * debt comes off their payout.
  */
 export function computePool(
   rows: Loot[],
   characters: { id: string; shares: number; debt?: number }[],
-  c: Pick<Campaign, "pettyCash" | "pettyCashHold">,
+  c: Pick<Campaign, "cash" | "cashHold">,
 ) {
   let sellable = 0;
   let party = 0;
@@ -147,7 +147,7 @@ export function computePool(
       }
     }
   }
-  const flow = pettyCashFlow(sellable, c.pettyCash, c.pettyCashHold);
+  const flow = cashFlow(sellable, c.cash, c.cashHold);
   const { rows: allocations, leftover } = allocate(
     flow.total,
     characters.map((c) => ({
@@ -162,14 +162,14 @@ export function computePool(
     party,
     claimed: claimedTotal,
     totalShares: characters.reduce((n, ch) => n + ch.shares, 0),
-    pettyCashIn: flow.pettyCashIn,
+    cashIn: flow.cashIn,
   };
   return { pool, allocations, leftover, total: flow.total };
 }
 
 /**
  * Refuses a change that takes the campaign's money past `MAX_MONEY`: the
- * subtotals of all its loot, whatever its status, plus petty cash. Called
+ * subtotals of all its loot, whatever its status, plus cash. Called
  * inside the change's transaction after it is written, so throwing rolls
  * it back; `field` names the form field to mark.
  */
@@ -178,12 +178,12 @@ export function assertMoneyInRange(db: Db, campaignId: string, field: string): v
   if (!c) throw notFound("That campaign");
   const total = campaignLoot(db, campaignId).reduce(
     (n, r) => n + subtotal(r.quantity, r.value, r.marketPct),
-    c.pettyCash,
+    c.cash,
   );
   if (total > MAX_MONEY) {
     const most = formatMoney(MAX_MONEY, c.currencyDecimals, c.currencyLabel);
     throw badRequest(
-      `That would bring the campaign's loot and petty cash to more than ${most}, ` +
+      `That would bring the campaign's loot and cash to more than ${most}, ` +
         "the most it can record.",
       { [field]: "That's more than the campaign can record." },
     );
@@ -283,7 +283,7 @@ export function campaignView(
     loot: shown.map((r) => lootView(r, opts.forGm)),
     pool,
     splits: splitHistory(db, c.id),
-    pettyCash: pettyCashLedger(db, c.id),
+    cash: cashLedger(db, c.id),
     // A public campaign has no observers, and the GM has no tab for them.
     ...(opts.forGm && !c.public
       ? {
@@ -306,19 +306,19 @@ export function campaignView(
   };
 }
 
-export function pettyCashLedger(db: Db, campaignId: string): PettyCashEntryView[] {
+export function cashLedger(db: Db, campaignId: string): CashEntryView[] {
   return db
     .select({
-      id: pettyCashEntry.id,
-      date: pettyCashEntry.date,
-      sessionId: pettyCashEntry.sessionId,
-      description: pettyCashEntry.description,
-      amount: pettyCashEntry.amount,
-      splitId: pettyCashEntry.splitId,
+      id: cashEntry.id,
+      date: cashEntry.date,
+      sessionId: cashEntry.sessionId,
+      description: cashEntry.description,
+      amount: cashEntry.amount,
+      splitId: cashEntry.splitId,
     })
-    .from(pettyCashEntry)
-    .where(eq(pettyCashEntry.campaignId, campaignId))
-    .orderBy(desc(pettyCashEntry.date), desc(pettyCashEntry.id))
+    .from(cashEntry)
+    .where(eq(cashEntry.campaignId, campaignId))
+    .orderBy(desc(cashEntry.date), desc(cashEntry.id))
     .all();
 }
 
@@ -340,9 +340,9 @@ export function splitHistory(db: Db, campaignId: string): SplitView[] {
     id: s.id,
     createdAt: s.createdAt.getTime(),
     total: s.total,
-    pettyCash: s.pettyCashIn,
+    cash: s.cashIn,
     totalShares: s.totalShares,
-    // Whatever the shares didn't take went to petty cash.
+    // Whatever the shares didn't take went to cash.
     leftover:
       s.total -
       shares.reduce((n, sh) => (sh.splitId === s.id ? n + sh.gross : n), 0),

@@ -61,13 +61,13 @@ export function SplitHistory({ view, mode }: { view: CampaignView; mode: Mode })
 
   async function undo(split: SplitView) {
     // Reversing only the split's own change keeps later ledger entries.
-    const pettyCashAfter = view.campaign.pettyCash - (split.leftover - split.pettyCash);
+    const cashAfter = view.campaign.cash - (split.leftover - split.cash);
     const ok = await ask({
       title: "Undo this split?",
       message: (
         <p className="max-w-md">
-          Bought items go back to their claimants and sold items back to the pool, petty cash goes to{" "}
-          <Money amount={pettyCashAfter} campaign={view.campaign} className="font-semibold" /> as the split's
+          Bought items go back to their claimants and sold items back to the pool, cash goes to{" "}
+          <Money amount={cashAfter} campaign={view.campaign} className="font-semibold" /> as the split's
           ledger entry is removed, each character's debt returns to what it was before, and the split is removed
           from the history.
         </p>
@@ -99,21 +99,21 @@ export function SplitHistory({ view, mode }: { view: CampaignView; mode: Mode })
             <span>{when(split.createdAt)}</span>
             <span className="text-base-content/70">
               Divided <Money amount={split.total} campaign={view.campaign} />
-              {split.pettyCash > 0 && (
+              {split.cash > 0 && (
                 <>
                   {" "}
-                  (with <Money amount={split.pettyCash} campaign={view.campaign} /> petty cash)
+                  (with <Money amount={split.cash} campaign={view.campaign} /> cash)
                 </>
               )}
             </span>
-            {split.pettyCash < 0 && (
+            {split.cash < 0 && (
               <span className="text-base-content/70">
-                <Money amount={-split.pettyCash} campaign={view.campaign} /> kept back for petty cash
+                <Money amount={-split.cash} campaign={view.campaign} /> kept back for cash
               </span>
             )}
             {split.leftover > 0 && (
               <span className="text-base-content/70">
-                <Money amount={split.leftover} campaign={view.campaign} /> left over to petty cash
+                <Money amount={split.leftover} campaign={view.campaign} /> left over to cash
               </span>
             )}
           </summary>

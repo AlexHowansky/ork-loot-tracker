@@ -6,7 +6,7 @@
 export const MAX_DECIMALS = 3;
 
 /**
- * The most any amount, or a campaign's loot and petty cash together, may
+ * The most any amount, or a campaign's loot and cash together, may
  * come to in minor units. It is a hundredth of the largest safe integer, so
  * a subtotal's quantity × value × market % stays exact, as do the sums of
  * the few such totals a split adds up.

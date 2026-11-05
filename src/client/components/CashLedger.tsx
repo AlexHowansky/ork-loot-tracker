@@ -2,17 +2,17 @@ import { useState } from "react";
 import { api, errorMessage } from "../api.ts";
 import { useRefresh } from "../queries.ts";
 import { formatMoney } from "../../shared/money.ts";
-import type { CampaignView, PettyCashEntryView } from "../../shared/types.ts";
+import type { CampaignView, CashEntryView } from "../../shared/types.ts";
 import { Money } from "./Money.tsx";
-import { PettyCashForm } from "./SimpleForms.tsx";
+import { CashForm } from "./SimpleForms.tsx";
 import { useConfirm } from "./Confirm.tsx";
 import { useToast } from "./Toast.tsx";
 import { Icon, faPen, faPlus, faScaleBalanced, faTrash } from "./Icon.tsx";
 import type { Mode } from "./Board.tsx";
 
-/** The petty cash ledger: the GM's adjustments and each split's change. */
-export function PettyCashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
-  const [editing, setEditing] = useState<PettyCashEntryView | "new" | null>(null);
+/** The cash ledger: the GM's adjustments and each split's change. */
+export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
+  const [editing, setEditing] = useState<CashEntryView | "new" | null>(null);
   const refresh = useRefresh();
   const ask = useConfirm();
   const toast = useToast();
@@ -24,7 +24,7 @@ export function PettyCashLedger({ view, mode }: { view: CampaignView; mode: Mode
   // The ledger is newest first; balances build up from the oldest entry.
   const balances = new Map<number, number>();
   let running = 0;
-  for (const e of [...view.pettyCash].reverse()) {
+  for (const e of [...view.cash].reverse()) {
     running += e.amount;
     balances.set(e.id, running);
   }
@@ -34,18 +34,18 @@ export function PettyCashLedger({ view, mode }: { view: CampaignView; mode: Mode
     const split = view.splits.find((s) => s.id === splitId);
     if (!split) return null;
     const parts: string[] = [];
-    if (split.pettyCash < 0) parts.push(`${money(-split.pettyCash)} kept back to reach the reserve`);
-    if (split.pettyCash > 0) parts.push(`${money(split.pettyCash)} above the reserve paid out`);
+    if (split.cash < 0) parts.push(`${money(-split.cash)} kept back to reach the reserve`);
+    if (split.cash > 0) parts.push(`${money(split.cash)} above the reserve paid out`);
     if (split.leftover > 0) parts.push(`${money(split.leftover)} that didn't divide evenly`);
     return parts.join(", ");
   }
 
-  async function remove(e: PettyCashEntryView) {
+  async function remove(e: CashEntryView) {
     const ok = await ask({
       title: "Delete this entry?",
       message: (
         <p>
-          <strong>{e.description}</strong> is removed from the ledger, and petty cash goes{" "}
+          <strong>{e.description}</strong> is removed from the ledger, and cash goes{" "}
           {e.amount > 0 ? "down" : "up"} by {money(Math.abs(e.amount))}.
         </p>
       ),
@@ -54,7 +54,7 @@ export function PettyCashLedger({ view, mode }: { view: CampaignView; mode: Mode
     });
     if (!ok) return;
     try {
-      await api.del(`/api/petty-cash/${e.id}`);
+      await api.del(`/api/cash/${e.id}`);
       toast("Entry deleted.");
     } catch (err) {
       toast(errorMessage(err), "error");
@@ -79,9 +79,9 @@ export function PettyCashLedger({ view, mode }: { view: CampaignView; mode: Mode
           </span>
         </div>
       )}
-      {view.pettyCash.length === 0 ? (
+      {view.cash.length === 0 ? (
         <p className="py-6 text-center text-base-content/60">
-          No petty cash entries yet.{gm && " Add one to record money paid in or out."}
+          No cash entries yet.{gm && " Add one to record money paid in or out."}
         </p>
       ) : (
         <div>
@@ -101,7 +101,7 @@ export function PettyCashLedger({ view, mode }: { view: CampaignView; mode: Mode
               </tr>
             </thead>
             <tbody>
-              {view.pettyCash.map((e) => {
+              {view.cash.map((e) => {
                 const detail = e.splitId === null ? null : splitDetail(e.splitId);
                 const session = e.sessionId === null ? undefined : sessionById.get(e.sessionId);
                 return (
@@ -154,7 +154,7 @@ export function PettyCashLedger({ view, mode }: { view: CampaignView; mode: Mode
         </div>
       )}
       {editing && (
-        <PettyCashForm
+        <CashForm
           campaign={campaign}
           sessions={view.sessions}
           entry={editing === "new" ? undefined : editing}

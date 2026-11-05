@@ -6,7 +6,7 @@ import {
   gm as gmTable,
   loot,
   observer,
-  pettyCashEntry,
+  cashEntry,
   session,
 } from "../db/schema.ts";
 import { requireGm } from "../lib/auth.ts";
@@ -154,16 +154,16 @@ export function campaignRoutes(r: Router) {
           { currencyDecimals: "Locked because loot has been recorded." },
         );
       }
-      // Petty cash is held in minor units, so its meaning would change too.
+      // Cash is held in minor units, so its meaning would change too.
       const ledger = ctx.db
         .select({ n: sql<number>`count(*)` })
-        .from(pettyCashEntry)
-        .where(eq(pettyCashEntry.campaignId, c.id))
+        .from(cashEntry)
+        .where(eq(cashEntry.campaignId, c.id))
         .get();
-      if (c.pettyCash !== 0 || (ledger?.n ?? 0) > 0) {
+      if (c.cash !== 0 || (ledger?.n ?? 0) > 0) {
         throw badRequest(
-          "Decimal places can't change once petty cash has been recorded.",
-          { currencyDecimals: "Locked because petty cash has been recorded." },
+          "Decimal places can't change once cash has been recorded.",
+          { currencyDecimals: "Locked because cash has been recorded." },
         );
       }
     }

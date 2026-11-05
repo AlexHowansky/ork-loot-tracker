@@ -20,7 +20,7 @@ import { observerRoutes } from "./routes/observer.ts";
 import { sessionRoutes } from "./routes/session.ts";
 import { lootRoutes } from "./routes/loot.ts";
 import { playerRoutes } from "./routes/player.ts";
-import { pettyCashRoutes } from "./routes/petty-cash.ts";
+import { cashRoutes } from "./routes/cash.ts";
 import { publicRoutes } from "./routes/public.ts";
 import type { LiveNotice } from "../shared/types.ts";
 
@@ -65,7 +65,7 @@ export function createApp(config: AppConfig) {
   sessionRoutes(router);
   lootRoutes(router);
   playerRoutes(router);
-  pettyCashRoutes(router);
+  cashRoutes(router);
   publicRoutes(router);
 
   async function serveUpload(name: string): Promise<Response> {

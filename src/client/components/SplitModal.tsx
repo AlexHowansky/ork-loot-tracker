@@ -27,10 +27,10 @@ export function SplitModal({
     gcTime: 0,
   });
   const s = useSubmit();
-  // The total can be nothing when the loot all goes to topping up petty
+  // The total can be nothing when the loot all goes to topping up
   // cash, so emptiness is judged by the loot alone.
   const empty =
-    preview.data && (preview.data.total - preview.data.pettyCash === 0 || preview.data.totalShares === 0);
+    preview.data && (preview.data.total - preview.data.cash === 0 || preview.data.totalShares === 0);
   const owing = preview.data?.shares.filter((sh) => sh.net < 0) ?? [];
   // Without debt allowed, nobody may end a split owing.
   const blocked = !campaign.allowDebt && owing.length > 0;
@@ -65,21 +65,21 @@ export function SplitModal({
             <p className="mb-2">
               Selling the pool brings in{" "}
               <Money
-                amount={preview.data.total - preview.data.pettyCash}
+                amount={preview.data.total - preview.data.cash}
                 campaign={campaign}
                 className="font-semibold"
               />
-              {preview.data.pettyCash > 0 && (
+              {preview.data.cash > 0 && (
                 <>
-                  , and <Money amount={preview.data.pettyCash} campaign={campaign} className="font-semibold" /> of
-                  petty cash {campaign.pettyCashHold > 0 ? "above its reserve " : ""}is paid out with it
+                  , and <Money amount={preview.data.cash} campaign={campaign} className="font-semibold" /> of
+                  cash {campaign.cashHold > 0 ? "above its reserve " : ""}is paid out with it
                 </>
               )}
-              {preview.data.pettyCash < 0 && (
+              {preview.data.cash < 0 && (
                 <>
-                  , of which <Money amount={-preview.data.pettyCash} campaign={campaign} className="font-semibold" />{" "}
-                  is kept back to top petty cash up to its reserve of{" "}
-                  <Money amount={campaign.pettyCashHold} campaign={campaign} className="font-semibold" />
+                  , of which <Money amount={-preview.data.cash} campaign={campaign} className="font-semibold" />{" "}
+                  is kept back to top cash up to its reserve of{" "}
+                  <Money amount={campaign.cashHold} campaign={campaign} className="font-semibold" />
                 </>
               )}
               . Available
@@ -97,7 +97,7 @@ export function SplitModal({
                 {preview.data.leftover > 0 && (
                   <p className="mt-2 text-sm text-base-content/70">
                     <Money amount={preview.data.leftover} campaign={campaign} className="font-semibold" /> doesn't
-                    divide evenly across the shares and will be added to petty cash.
+                    divide evenly across the shares and will be added to cash.
                   </p>
                 )}
                 {owing.length > 0 &&

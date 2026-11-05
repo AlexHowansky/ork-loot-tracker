@@ -241,7 +241,7 @@ function GmCampaign({ id }: { id: string }) {
       {editing && (
         <CampaignForm
           campaign={campaign}
-          decimalsLocked={view.loot.length > 0 || view.pettyCash.length > 0 || campaign.pettyCash !== 0}
+          decimalsLocked={view.loot.length > 0 || view.cash.length > 0 || campaign.cash !== 0}
           debtLocked={view.characters.some((c) => c.debt > 0)}
           campaignUrl={view.campaignUrl}
           observerCount={view.observers?.length ?? 0}
@@ -270,14 +270,14 @@ function GmCampaign({ id }: { id: string }) {
           onClose={() => setSplitting(false)}
           onDone={(split) => {
             const money = (n: number) => formatMoney(n, campaign.currencyDecimals, campaign.currencyLabel);
-            const change = split.leftover - split.pettyCash;
-            const petty =
+            const change = split.leftover - split.cash;
+            const cashNote =
               change > 0
-                ? `, ${money(change)} added to petty cash`
+                ? `, ${money(change)} added to cash`
                 : change < 0
-                  ? `, ${money(-change)} paid out of petty cash`
+                  ? `, ${money(-change)} paid out of cash`
                   : "";
-            toast(`Split done: ${money(split.total - split.leftover)} shared out${petty}.`);
+            toast(`Split done: ${money(split.total - split.leftover)} shared out${cashNote}.`);
             refresh();
           }}
         />

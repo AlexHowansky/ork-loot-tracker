@@ -15,7 +15,7 @@ shares, taking each character's claims out of what they're owed.
 * Players claim available loot, including part of a stack, and can release their
   claims. The GM can claim or release on a character's behalf.
 * Split preview and history. Each character's share, claims and payout are
-  shown, and any remainder that doesn't divide evenly goes to petty cash.
+  shown, and any remainder that doesn't divide evenly goes to cash.
 * Each campaign has its own currency label and decimal places. Amounts are
   stored as integers, so there are no rounding errors.
 * Optional campaign background images.

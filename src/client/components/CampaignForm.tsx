@@ -24,7 +24,7 @@ export function CampaignForm({
   onSaved,
 }: {
   campaign?: CampaignInfo;
-  /** Decimal places can't change once loot or petty cash exists. */
+  /** Decimal places can't change once loot or cash exists. */
   decimalsLocked?: boolean;
   /** Debt can't be turned off while characters still owe. */
   debtLocked?: boolean;
@@ -44,7 +44,7 @@ export function CampaignForm({
   const [isPublic, setPublic] = useState(campaign?.public ?? false);
   // The hold is a whole number of the currency, stored in minor units.
   const [hold, setHold] = useState(
-    String((campaign?.pettyCashHold ?? 0) / 10 ** (campaign?.currencyDecimals ?? 2)),
+    String((campaign?.cashHold ?? 0) / 10 ** (campaign?.currencyDecimals ?? 2)),
   );
   const [image, setImage] = useState<File | null>(null);
   const allowDebtId = useId();
@@ -65,7 +65,7 @@ export function CampaignForm({
   };
 
   const parsedHold = parseAmount(hold, 0);
-  const holdError = parsedHold === undefined ? "Enter a whole number." : s.fields.pettyCashHold;
+  const holdError = parsedHold === undefined ? "Enter a whole number." : s.fields.cashHold;
 
   async function copyUrl() {
     if (!campaignUrl) return;
@@ -105,7 +105,7 @@ export function CampaignForm({
         baseReferenceUrl,
         allowDebt,
         public: isPublic,
-        pettyCashHold: (parsedHold ?? 0) * 10 ** currencyDecimals,
+        cashHold: (parsedHold ?? 0) * 10 ** currencyDecimals,
       };
       const saved = campaign
         ? await api.patch<CampaignInfo>(`/api/campaigns/${campaign.id}`, body)
@@ -155,7 +155,7 @@ export function CampaignForm({
               label="Game system"
               hint={
                 decimalsLocked
-                  ? "Fills in the fields below. Systems with other decimal places are unavailable once loot or petty cash is recorded."
+                  ? "Fills in the fields below. Systems with other decimal places are unavailable once loot or cash is recorded."
                   : "Fills in the fields below."
               }
             >
@@ -188,7 +188,7 @@ export function CampaignForm({
               <Field
                 label="Decimal places"
                 error={s.fields.currencyDecimals}
-                hint={decimalsLocked ? "Locked once loot or petty cash is recorded." : undefined}
+                hint={decimalsLocked ? "Locked once loot or cash is recorded." : undefined}
               >
                 <select
                   className={withError("select w-32", s.fields.currencyDecimals)}
@@ -220,9 +220,9 @@ export function CampaignForm({
           </div>
           <div>
             <Field
-              label={`Petty cash reserve (${currencyLabel || "value"})`}
+              label={`Cash reserve (${currencyLabel || "value"})`}
               error={holdError}
-              hint="Each split tops petty cash up to this from the loot, or pays out anything above it, to keep money aside for shared costs like inns and potions."
+              hint="Each split tops cash up to this from the loot, or pays out anything above it, to keep money aside for shared costs like inns and potions."
             >
               <input
                 type="number"

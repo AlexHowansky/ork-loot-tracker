@@ -15,7 +15,7 @@ export interface Allocation extends AllocationInput {
 export interface AllocationResult {
   /** What one share is worth, in whole minor units. */
   perShare: number;
-  /** Units left after paying every share; goes to petty cash. */
+  /** Units left after paying every share; goes to cash. */
   leftover: number;
   rows: Allocation[];
 }
@@ -44,28 +44,28 @@ export function allocate(
   };
 }
 
-export interface PettyCashFlow {
+export interface CashFlow {
   /**
-   * What petty cash adds to the split: what it holds above the hold, or,
+   * What cash adds to the split: what it holds above the hold, or,
    * when negative, what the loot gives up to top it up to the hold.
    */
-  pettyCashIn: number;
-  /** The loot plus `pettyCashIn`, for the shares to divide. */
+  cashIn: number;
+  /** The loot plus `cashIn`, for the shares to divide. */
   total: number;
 }
 
 /**
- * How petty cash takes part in a split. It is first brought to `hold`:
+ * How cash takes part in a split. It is first brought to `hold`:
  * anything above it joins the loot, and any shortfall comes out of the
  * loot, as far as the loot reaches. The leftover from dividing `total`
- * then goes back into petty cash on top of that.
+ * then goes back into cash on top of that.
  */
-export function pettyCashFlow(
+export function cashFlow(
   sellable: number,
-  pettyCash: number,
+  cash: number,
   hold: number,
-): PettyCashFlow {
-  const kept = Math.min(hold, sellable + pettyCash);
-  const pettyCashIn = pettyCash - kept;
-  return { pettyCashIn, total: sellable + pettyCashIn };
+): CashFlow {
+  const kept = Math.min(hold, sellable + cash);
+  const cashIn = cash - kept;
+  return { cashIn, total: sellable + cashIn };
 }

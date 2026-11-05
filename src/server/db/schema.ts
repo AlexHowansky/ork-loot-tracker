@@ -77,12 +77,12 @@ export const campaign = sqliteTable(
     /** Where item links will point, e.g. a rules reference site. */
     baseReferenceUrl: text("base_reference_url"),
     /**
-     * The balance of the petty cash ledger, in minor units: split leftovers
+     * The balance of the cash ledger, in minor units: split leftovers
      * plus whatever the GM paid in or out by hand.
      */
-    pettyCash: integer("petty_cash").notNull().default(0),
-    /** What each split tops petty cash up (or pays it down) to. */
-    pettyCashHold: integer("petty_cash_hold").notNull().default(0),
+    cash: integer("cash").notNull().default(0),
+    /** What each split tops cash up (or pays it down) to. */
+    cashHold: integer("cash_hold").notNull().default(0),
     /** Whether a split may leave a character owing, carried as debt. */
     allowDebt: integer("allow_debt", { mode: "boolean" })
       .notNull()
@@ -208,13 +208,13 @@ export const split = sqliteTable(
     campaignId: text("campaign_id")
       .notNull()
       .references(() => campaign.id, { onDelete: "cascade" }),
-    /** The loot sold plus `pettyCashIn`: what the shares divided. */
+    /** The loot sold plus `cashIn`: what the shares divided. */
     total: integer("total").notNull(),
     /**
-     * Petty cash above the hold that this split paid out, or, when
-     * negative, what it took from the loot to top petty cash up to the hold.
+     * Cash above the hold that this split paid out, or, when
+     * negative, what it took from the loot to top cash up to the hold.
      */
-    pettyCashIn: integer("petty_cash_in").notNull().default(0),
+    cashIn: integer("cash_in").notNull().default(0),
     totalShares: integer("total_shares").notNull(),
     createdAt: createdAt(),
   },
@@ -243,13 +243,13 @@ export const splitShare = sqliteTable(
 );
 
 /**
- * One change to a campaign's petty cash: paid in when positive, paid out
+ * One change to a campaign's cash: paid in when positive, paid out
  * when negative. A split's own change carries its `splitId` and goes when
  * the split is undone; the GM writes the rest by hand, against a session.
  * `date` follows that session's, and stays if the session is deleted.
  */
-export const pettyCashEntry = sqliteTable(
-  "petty_cash_entry",
+export const cashEntry = sqliteTable(
+  "cash_entry",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     campaignId: text("campaign_id")
@@ -267,8 +267,8 @@ export const pettyCashEntry = sqliteTable(
     createdAt: createdAt(),
   },
   (t) => [
-    index("petty_cash_entry_campaign_idx").on(t.campaignId),
-    index("petty_cash_entry_session_idx").on(t.sessionId),
+    index("cash_entry_campaign_idx").on(t.campaignId),
+    index("cash_entry_session_idx").on(t.sessionId),
   ],
 );
 
@@ -316,4 +316,4 @@ export type Session = typeof session.$inferSelect;
 export type Loot = typeof loot.$inferSelect;
 export type Split = typeof split.$inferSelect;
 export type SplitShare = typeof splitShare.$inferSelect;
-export type PettyCashEntry = typeof pettyCashEntry.$inferSelect;
+export type CashEntry = typeof cashEntry.$inferSelect;

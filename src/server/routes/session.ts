@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { campaign, campaignGm, pettyCashEntry, session } from "../db/schema.ts";
+import { campaign, campaignGm, cashEntry, session } from "../db/schema.ts";
 import { requireGm } from "../lib/auth.ts";
 import { notFound } from "../lib/errors.ts";
 import { idParam, readJson, uuidParam, type Router } from "../lib/http.ts";
@@ -40,9 +40,9 @@ export function sessionRoutes(r: Router) {
     const input = await readJson(ctx, sessionSchema);
     ctx.db.transaction((tx) => {
       tx.update(session).set(input).where(eq(session.id, s.id)).run();
-      tx.update(pettyCashEntry)
+      tx.update(cashEntry)
         .set({ date: input.date })
-        .where(eq(pettyCashEntry.sessionId, s.id))
+        .where(eq(cashEntry.sessionId, s.id))
         .run();
     });
     ctx.changed(s.campaignId);

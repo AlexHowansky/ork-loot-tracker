@@ -4,7 +4,7 @@ import {
   campaign,
   character,
   loot,
-  pettyCashEntry,
+  cashEntry,
   session,
   split,
   splitShare,
@@ -195,7 +195,7 @@ export function releaseAllClaims(db: Db, who: Character): number {
 }
 
 function splitPlan(db: Db, campaignId: string) {
-  // Read afresh so a split inside a transaction sees current petty cash.
+  // Read afresh so a split inside a transaction sees current cash.
   const c = db.select().from(campaign).where(eq(campaign.id, campaignId)).get();
   if (!c) throw notFound("That campaign");
   const chars = db
@@ -212,8 +212,8 @@ function splitPlan(db: Db, campaignId: string) {
     .filter(({ a }) => a.shares > 0 || a.claimed > 0);
   return {
     allowDebt: c.allowDebt,
-    pettyCash: c.pettyCash,
-    pettyCashIn: computed.pool.pettyCashIn,
+    cash: c.cash,
+    cashIn: computed.pool.cashIn,
     total: computed.total,
     chars: taking.map((t) => t.ch),
     rows,
@@ -225,12 +225,12 @@ function splitPlan(db: Db, campaignId: string) {
 
 /** What a split would pay out right now, without changing anything. */
 export function previewSplit(db: Db, c: Campaign): SplitView {
-  const { chars, pool, allocations, leftover, total, pettyCashIn } = splitPlan(db, c.id);
+  const { chars, pool, allocations, leftover, total, cashIn } = splitPlan(db, c.id);
   return {
     id: 0,
     createdAt: Date.now(),
     total,
-    pettyCash: pettyCashIn,
+    cash: cashIn,
     totalShares: pool.totalShares,
     leftover,
     shares: allocations
@@ -248,17 +248,17 @@ export function previewSplit(db: Db, c: Campaign): SplitView {
 }
 
 /**
- * Sells the pool, first bringing petty cash to its hold: any excess is paid
+ * Sells the pool, first bringing cash to its hold: any excess is paid
  * out with the loot, any shortfall is kept back from it. Records each
- * character's payout, adds what doesn't divide evenly to petty cash, writes
- * the net change to the petty cash ledger, and marks claimed items bought
+ * character's payout, adds what doesn't divide evenly to cash, writes
+ * the net change to the cash ledger, and marks claimed items bought
  * and available items sold. Party and left-behind items are untouched. A
  * payout below zero becomes the character's debt if the campaign allows
  * it; otherwise the split is refused.
  */
 export function runSplit(db: Db, c: Campaign): SplitView {
   const id = db.transaction((tx) => {
-    const { allowDebt, chars, rows, pool, allocations, leftover, total, pettyCash, pettyCashIn } =
+    const { allowDebt, chars, rows, pool, allocations, leftover, total, cash, cashIn } =
       splitPlan(tx, c.id);
     if (pool.totalShares === 0) {
       throw badRequest("Give at least one character a share before running a split.");
@@ -284,7 +284,7 @@ export function runSplit(db: Db, c: Campaign): SplitView {
     }
     const created = tx
       .insert(split)
-      .values({ campaignId: c.id, total, pettyCashIn, totalShares: pool.totalShares })
+      .values({ campaignId: c.id, total, cashIn, totalShares: pool.totalShares })
       .returning()
       .get();
     tx.insert(splitShare)
@@ -307,13 +307,13 @@ export function runSplit(db: Db, c: Campaign): SplitView {
         tx.update(character).set({ debt }).where(eq(character.id, a.id)).run();
       }
     }
-    const change = leftover - pettyCashIn;
+    const change = leftover - cashIn;
     if (change !== 0) {
       tx.update(campaign)
-        .set({ pettyCash: pettyCash + change })
+        .set({ cash: cash + change })
         .where(eq(campaign.id, c.id))
         .run();
-      tx.insert(pettyCashEntry)
+      tx.insert(cashEntry)
         .values({
           campaignId: c.id,
           date: created.createdAt.toISOString().slice(0, 10),
@@ -349,10 +349,10 @@ export function runSplit(db: Db, c: Campaign): SplitView {
 /**
  * Undoes the campaign's most recent split: bought items go back to their
  * claimants and sold items back to the pool, each character's debt returns
- * to what it was, the split's change to petty cash is reversed (along with
+ * to what it was, the split's change to cash is reversed (along with
  * its ledger entry), and the split leaves the history. A claim can't go
  * back to a character who now has no shares, so that item returns to the
- * pool. If petty cash has since been spent below what the split added, the
+ * pool. If cash has since been spent below what the split added, the
  * undo is refused rather than leave it negative.
  */
 export function undoSplit(db: Db, c: Campaign, splitId: number): void {
@@ -370,16 +370,16 @@ export function undoSplit(db: Db, c: Campaign, splitId: number): void {
     }
     const taking = tx.select().from(splitShare).where(eq(splitShare.splitId, splitId)).all();
     const leftover = latest.total - taking.reduce((n, sh) => n + sh.gross, 0);
-    const change = leftover - latest.pettyCashIn;
+    const change = leftover - latest.cashIn;
     const current = tx
-      .select({ pettyCash: campaign.pettyCash })
+      .select({ cash: campaign.cash })
       .from(campaign)
       .where(eq(campaign.id, c.id))
-      .get()!.pettyCash;
+      .get()!.cash;
     if (current - change < 0) {
       throw badRequest(
-        "This split can't be undone, because petty cash has since been spent " +
-          "below what the split put in. Add a petty cash entry paying it back first.",
+        "This split can't be undone, because cash has since been spent " +
+          "below what the split put in. Add a cash entry paying it back first.",
       );
     }
     const rows = tx.select().from(loot).where(eq(loot.splitId, splitId)).all();
@@ -416,10 +416,10 @@ export function undoSplit(db: Db, c: Campaign, splitId: number): void {
         .run();
     }
     tx.update(campaign)
-      .set({ pettyCash: current - change })
+      .set({ cash: current - change })
       .where(eq(campaign.id, c.id))
       .run();
-    // Its petty cash ledger entry goes with it.
+    // Its cash ledger entry goes with it.
     tx.delete(split).where(eq(split.id, splitId)).run();
   });
 }

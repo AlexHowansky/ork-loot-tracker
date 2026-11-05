@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { allocate, pettyCashFlow } from "../src/server/domain/split.ts";
+import { allocate, cashFlow } from "../src/server/domain/split.ts";
 import { formatAmount, MAX_MONEY, parseAmount, parseSignedAmount, subtotal } from "../src/shared/money.ts";
 
 describe("subtotal", () => {
@@ -102,21 +102,21 @@ describe("allocate", () => {
   });
 });
 
-describe("petty cash flow", () => {
-  test("with no hold, all petty cash joins the split", () => {
-    expect(pettyCashFlow(1000, 3, 0)).toEqual({ pettyCashIn: 3, total: 1003 });
+describe("cash flow", () => {
+  test("with no hold, all cash joins the split", () => {
+    expect(cashFlow(1000, 3, 0)).toEqual({ cashIn: 3, total: 1003 });
   });
 
   test("a shortfall below the hold comes out of the loot", () => {
-    expect(pettyCashFlow(1000, 20, 50)).toEqual({ pettyCashIn: -30, total: 970 });
+    expect(cashFlow(1000, 20, 50)).toEqual({ cashIn: -30, total: 970 });
   });
 
   test("anything above the hold is paid out", () => {
-    expect(pettyCashFlow(1000, 80, 50)).toEqual({ pettyCashIn: 30, total: 1030 });
+    expect(cashFlow(1000, 80, 50)).toEqual({ cashIn: 30, total: 1030 });
   });
 
   test("the top-up stops when the loot runs out", () => {
-    expect(pettyCashFlow(10, 5, 50)).toEqual({ pettyCashIn: -10, total: 0 });
+    expect(cashFlow(10, 5, 50)).toEqual({ cashIn: -10, total: 0 });
   });
 });
 

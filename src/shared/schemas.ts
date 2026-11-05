@@ -110,15 +110,15 @@ export const campaignSchema = z
     /** Readable by anyone with its URL; making it public drops observers. */
     public: z.boolean().default(false),
     /** In minor units, but always a whole number of the currency. */
-    pettyCashHold: z
-      .int({ error: "Petty cash reserve isn't a valid amount." })
-      .min(0, { error: "Petty cash reserve can't be negative." })
-      .max(MAX_MONEY, { error: "That petty cash reserve is too large." })
+    cashHold: z
+      .int({ error: "Cash reserve isn't a valid amount." })
+      .min(0, { error: "Cash reserve can't be negative." })
+      .max(MAX_MONEY, { error: "That cash reserve is too large." })
       .default(0),
   })
-  .refine((c) => c.pettyCashHold % 10 ** c.currencyDecimals === 0, {
-    path: ["pettyCashHold"],
-    error: "Petty cash reserve must be a whole number.",
+  .refine((c) => c.cashHold % 10 ** c.currencyDecimals === 0, {
+    path: ["cashHold"],
+    error: "Cash reserve must be a whole number.",
   });
 
 export const characterSchema = z.object({
@@ -187,8 +187,8 @@ export const gmClaimSchema = claimSchema.omit({ lootId: true }).extend({
   characterId: z.uuid({ error: "Choose a character." }),
 });
 
-/** A hand-written petty cash adjustment: paid in, or out when negative. */
-export const pettyCashEntrySchema = z.object({
+/** A hand-written cash adjustment: paid in, or out when negative. */
+export const cashEntrySchema = z.object({
   sessionId: z.int({ error: "Choose a session." }),
   description: name("Description", 200),
   amount: z
@@ -199,8 +199,8 @@ export const pettyCashEntrySchema = z.object({
 });
 
 /** An entry that has no session (its own was deleted) may stay without one. */
-export const pettyCashEntryUpdateSchema = pettyCashEntrySchema.extend({
-  sessionId: pettyCashEntrySchema.shape.sessionId.nullable(),
+export const cashEntryUpdateSchema = cashEntrySchema.extend({
+  sessionId: cashEntrySchema.shape.sessionId.nullable(),
 });
 
 export type CampaignInput = z.infer<typeof campaignSchema>;
@@ -208,4 +208,4 @@ export type CharacterInput = z.infer<typeof characterSchema>;
 export type ObserverInput = z.infer<typeof observerSchema>;
 export type SessionInput = z.infer<typeof sessionSchema>;
 export type LootInput = z.infer<typeof lootSchema>;
-export type PettyCashEntryInput = z.infer<typeof pettyCashEntrySchema>;
+export type CashEntryInput = z.infer<typeof cashEntrySchema>;

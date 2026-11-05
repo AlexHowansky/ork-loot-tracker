@@ -6,7 +6,7 @@ import type {
   LootView,
   SessionView,
   CampaignInfo,
-  PettyCashEntryView,
+  CashEntryView,
 } from "../../shared/types.ts";
 import { formatMoney, parseSignedAmount, subtotal, toInput } from "../../shared/money.ts";
 import { Field, FormError, withError } from "./Field.tsx";
@@ -190,8 +190,8 @@ export function SessionForm({
   );
 }
 
-/** Adds or edits a hand-written petty cash entry. */
-export function PettyCashForm({
+/** Adds or edits a hand-written cash entry. */
+export function CashForm({
   campaign,
   sessions,
   entry,
@@ -200,7 +200,7 @@ export function PettyCashForm({
 }: {
   campaign: CampaignInfo;
   sessions: SessionView[];
-  entry?: PettyCashEntryView;
+  entry?: CashEntryView;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -221,14 +221,14 @@ export function PettyCashForm({
     s.run(async () => {
       if (parsed === undefined) return;
       const body = { sessionId, description, amount: parsed ?? 0 };
-      if (entry) await api.patch(`/api/petty-cash/${entry.id}`, body);
-      else await api.post(`/api/campaigns/${campaign.id}/petty-cash`, body);
+      if (entry) await api.patch(`/api/cash/${entry.id}`, body);
+      else await api.post(`/api/campaigns/${campaign.id}/cash`, body);
       onSaved();
       onClose();
     });
   return (
     <Modal
-      title={entry ? "Edit petty cash entry" : "Add petty cash entry"}
+      title={entry ? "Edit cash entry" : "Add cash entry"}
       onClose={onClose}
       onSubmit={submit}
       actions={

@@ -30,12 +30,12 @@ export interface CampaignInfo {
   /** Where item links will point, e.g. a rules reference site. */
   baseReferenceUrl: string | null;
   /**
-   * The petty cash ledger's balance. Changed only through ledger entries,
+   * The cash ledger's balance. Changed only through ledger entries,
    * by the GM or by splits.
    */
-  pettyCash: number;
-  /** What each split tops petty cash up (or pays it down) to. */
-  pettyCashHold: number;
+  cash: number;
+  /** What each split tops cash up (or pays it down) to. */
+  cashHold: number;
   /** Whether a split may leave a character owing, carried as debt. */
   allowDebt: boolean;
   /** Anyone with the campaign's URL may read it, without signing in. */
@@ -63,7 +63,7 @@ export interface CharacterView {
   id: string;
   name: string;
   shares: number;
-  /** Projected share of the pool and petty cash if a split ran now. */
+  /** Projected share of the pool and cash if a split ran now. */
   gross: number;
   /** Market value of items this character has claimed. */
   claimed: number;
@@ -131,10 +131,10 @@ export interface PoolView {
   claimed: number;
   totalShares: number;
   /**
-   * Petty cash a split would pay out above the hold, or, when negative,
-   * what it would take from the loot to top petty cash up to the hold.
+   * Cash a split would pay out above the hold, or, when negative,
+   * what it would take from the loot to top cash up to the hold.
    */
-  pettyCashIn: number;
+  cashIn: number;
 }
 
 export interface SplitShareView {
@@ -152,20 +152,20 @@ export interface SplitShareView {
 export interface SplitView {
   id: number;
   createdAt: number;
-  /** The loot sold plus `pettyCash`: what the shares divided. */
+  /** The loot sold plus `cash`: what the shares divided. */
   total: number;
   /**
-   * Petty cash above the hold paid out with the loot, or, when negative,
-   * what was taken from the loot to top petty cash up to the hold.
+   * Cash above the hold paid out with the loot, or, when negative,
+   * what was taken from the loot to top cash up to the hold.
    */
-  pettyCash: number;
+  cash: number;
   totalShares: number;
-  /** What the shares couldn't divide evenly; it becomes the petty cash. */
+  /** What the shares couldn't divide evenly; it becomes the cash. */
   leftover: number;
   shares: SplitShareView[];
 }
 
-export interface PettyCashEntryView {
+export interface CashEntryView {
   id: number;
   date: string;
   /** Null for a split's entry, or once the entry's session is deleted. */
@@ -192,8 +192,8 @@ export interface CampaignView {
   loot: LootView[];
   pool: PoolView;
   splits: SplitView[];
-  /** The petty cash ledger, newest first. */
-  pettyCash: PettyCashEntryView[];
+  /** The cash ledger, newest first. */
+  cash: CashEntryView[];
   /** GM only: the campaign's observers. */
   observers?: ObserverView[];
   /** GM only: everyone who runs the campaign. */
