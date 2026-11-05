@@ -355,7 +355,11 @@ they have claimed from the pool.
 
 * When the loot table shows all sessions, a "Session" column after "Claim"
   shows the session's date, or a dash for an item with no session. Hovering
-  over the date shows that session's title and notes.
+  over the date shows that session's title and notes. For the GM, the date
+  (or dash) opens a menu of "No session" and the other sessions, which moves
+  the item there without opening the edit form. As with the status pill, an
+  item that's bought, sold or abandoned shows a plain date instead, and so
+  does every item while the campaign has no sessions.
 
 * The loot table is sorted by item name, A to Z, until another column is
   chosen. Clicking any column header but the actions sorts the table by

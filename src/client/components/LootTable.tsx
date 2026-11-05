@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { api, errorMessage } from "../api.ts";
 import { useRefresh } from "../queries.ts";
-import type { CampaignView, LootView } from "../../shared/types.ts";
+import type { CampaignView, LootView, SessionView } from "../../shared/types.ts";
 import { CHARACTER_STATUSES, FINAL_STATUSES, LOOT_STATUSES, STATUS_LABEL, type LootStatus } from "../../shared/status.ts";
 import { Money } from "./Money.tsx";
 import { StatusBadge, StatusMenu } from "./StatusBadge.tsx";
+import { Menu } from "./Menu.tsx";
 import { LootForm } from "./LootForm.tsx";
 import { ClaimForm, StatusCharacterForm } from "./SimpleForms.tsx";
 import { useConfirm } from "./Confirm.tsx";
@@ -13,6 +14,7 @@ import {
   Icon,
   faArrowRotateLeft,
   faArrowUpRightFromSquare,
+  faChevronDown,
   faCircleQuestion,
   faHand,
   faMagnifyingGlass,
@@ -300,6 +302,63 @@ export function LootTable({
     );
   };
 
+  /** A session's date, with its title and notes on hover; a dash for none. */
+  const sessionLabel = (session: SessionView | undefined) =>
+    session?.title || session?.notes ? (
+      <span className="tooltip tooltip-top">
+        <span className="tooltip-content text-left">
+          {session.title && <span className="block font-semibold">{session.title}</span>}
+          {session.notes && <span className="block whitespace-pre-line">{session.notes}</span>}
+        </span>
+        {session.date}
+      </span>
+    ) : (
+      (session?.date ?? "—")
+    );
+
+  function moveToSession(item: LootView, sessionId: number | null) {
+    const to = sessionId !== null ? sessionById.get(sessionId) : undefined;
+    act(
+      item,
+      () => api.patch(`/api/loot/${item.id}`, { sessionId }),
+      to ? `Moved ${item.name} to the ${to.date} session.` : `Took ${item.name} off its session.`,
+    );
+  }
+
+  /** The GM's session cell: a menu of the other sessions to move the item to. */
+  const sessionMenu = (item: LootView, session: SessionView | undefined) => (
+    <Menu
+      align="end"
+      ariaLabel={`Session of ${item.name}: ${session?.date ?? "none"}. Change session`}
+      buttonClass={`inline-flex cursor-pointer items-center gap-1 rounded px-1 hover:bg-base-200 hover:text-base-content ${busyId === item.id ? "pointer-events-none opacity-50" : ""}`}
+      menuClass="w-max max-w-xs font-normal"
+      label={
+        <>
+          {sessionLabel(session)}
+          <Icon icon={faChevronDown} className="text-[0.6rem] opacity-70" />
+        </>
+      }
+    >
+      {item.sessionId !== null && (
+        <li>
+          <button type="button" onClick={() => moveToSession(item, null)}>
+            No session
+          </button>
+        </li>
+      )}
+      {view.sessions
+        .filter((s) => s.id !== item.sessionId)
+        .map((s) => (
+          <li key={s.id}>
+            <button type="button" onClick={() => moveToSession(item, s.id)}>
+              {s.date}
+              {s.title ? ` — ${s.title}` : ""}
+            </button>
+          </li>
+        ))}
+    </Menu>
+  );
+
   const claimButton = (item: LootView, className = "") => (
     <button type="button" className={`btn btn-xs ${className}`} disabled={busyId === item.id} onClick={() => claim(item)}>
       <Icon icon={faHand} /> Claim
@@ -493,17 +552,9 @@ export function LootTable({
                     <td className="hidden whitespace-nowrap sm:table-cell">{claimant}</td>
                     {sessionFilter === "all" && (
                       <td className="hidden whitespace-nowrap text-base-content/70 md:table-cell">
-                        {session?.title || session?.notes ? (
-                          <span className="tooltip tooltip-left">
-                            <span className="tooltip-content text-left">
-                              {session.title && <span className="block font-semibold">{session.title}</span>}
-                              {session.notes && <span className="block whitespace-pre-line">{session.notes}</span>}
-                            </span>
-                            {session.date}
-                          </span>
-                        ) : (
-                          (session?.date ?? "—")
-                        )}
+                        {gm && !FINAL_STATUSES.includes(item.status) && view.sessions.length > 0
+                          ? sessionMenu(item, session)
+                          : sessionLabel(session)}
                       </td>
                     )}
                     <td className="text-right whitespace-nowrap">
