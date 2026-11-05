@@ -56,6 +56,25 @@ the `SMTP_*` variables to send mail). The database and uploads live in the
 `/app/data` volume. Run a single container per database, since live
 updates are delivered in-process.
 
+## Reverse proxy
+
+To serve the app over HTTPS, put a reverse proxy such as
+[Caddy](https://caddyserver.com) in front of it. Caddy obtains and renews
+the TLS certificate itself. A minimal `Caddyfile`:
+
+```caddyfile
+loot.example.com {
+	reverse_proxy localhost:3000
+}
+```
+
+Caddy passes the client's address in `X-Forwarded-For` and streams the
+Server-Sent Events that keep campaign pages live without extra settings.
+Run the app with `APP_URL=https://loot.example.com` and `TRUST_PROXY=1`,
+and make it reachable only through Caddy, for example by publishing the
+container's port on loopback alone (`-p 127.0.0.1:3000:3000`). Otherwise
+a client could connect directly and forge its own `X-Forwarded-For`.
+
 ## Scripts
 
 | Command                         | Purpose                                  |
