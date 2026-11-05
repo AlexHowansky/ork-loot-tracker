@@ -126,6 +126,18 @@ The product specification (terms and features) is in @SPEC.md.
   `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USER`, `SMTP_PASS` and `SMTP_FROM`
   configure outgoing mail. Without `SMTP_HOST`, as in dev, password reset
   links appear in the server log.
+* `bun run build` (`scripts/build.ts`) bundles the server, with the client
+  its HTML import serves, and the GM CLI into `dist/`, dependencies
+  included, so the output runs without `node_modules`. A built server finds
+  its client files relative to the working directory, so it runs from
+  `dist/server`. Entry points sit two levels below the project root in both
+  `src/` and `dist/`, so they derive `drizzle/` and `data/` from
+  `import.meta.dir` and pass the migrations folder to `openDb`.
+* The `Dockerfile` builds in one stage and runs only `dist/` and `drizzle/`
+  in the next, in production mode as the unprivileged `bun` user, with the
+  database and uploads in a `/app/data` volume; `gm` in the container runs
+  the CLI. Pin `BUN_VERSION` to the Bun used in development. `.env` is
+  never copied in; configure the container with `-e` or `--env-file`.
 
 ## Conclusion
 

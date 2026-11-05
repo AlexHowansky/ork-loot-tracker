@@ -41,12 +41,28 @@ bun run dev                    # http://localhost:3000
 Database migrations are applied automatically on startup. Browser hot module
 reloading is off, so refresh the page after changing client code.
 
+## Docker
+
+```sh
+docker build -t phat-loot .
+docker run -d --name phat-loot -p 3000:3000 \
+  -v phat-loot-data:/app/data --env-file .env.production phat-loot
+docker exec -it phat-loot gm create <email>
+```
+
+The image holds only the bundled app (`bun run build`) and its migrations,
+with no `node_modules`. It runs in production mode, so set `APP_URL` (and
+the `SMTP_*` variables to send mail). The database and uploads live in the
+`/app/data` volume. Run a single container per database, since live
+updates are delivered in-process.
+
 ## Scripts
 
 | Command                         | Purpose                                  |
 | ------------------------------- | ---------------------------------------- |
 | `bun run dev`                   | Start the server with hot reload         |
 | `bun run start`                 | Start the server in production mode      |
+| `bun run build`                 | Bundle server, client and CLI into `dist/` |
 | `bun run gm create <email>`     | Create a GM account                      |
 | `bun run gm passwd <email>`     | Change a GM's password                   |
 | `bun run gm list`               | List GM accounts                         |

@@ -1,0 +1,12 @@
+.dockerignore
+.git
+.env
+.env.*
+!.env.example
+data
+dist
+Dockerfile
+example.webp
+node_modules
+test
+*.md

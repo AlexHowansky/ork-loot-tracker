@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --hot src/server/index.ts",
+    "build": "bun scripts/build.ts",
     "start": "NODE_ENV=production bun src/server/index.ts",
     "gm": "bun src/cli/gm.ts",
     "db:generate": "drizzle-kit generate",

@@ -13,7 +13,10 @@ import { hashPassword } from "../server/lib/auth.ts";
 import { emailSchema, newPasswordSchema } from "../shared/schemas.ts";
 
 const root = join(import.meta.dir, "../..");
-const db = openDb(process.env.DB_PATH ?? join(root, "data/app.db"));
+const db = openDb(
+  process.env.DB_PATH ?? join(root, "data/app.db"),
+  join(root, "drizzle"),
+);
 
 /** Input received beyond the current line, kept for the next prompt. */
 let pending = "";

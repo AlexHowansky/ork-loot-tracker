@@ -46,7 +46,7 @@ const mailer = smtpHost
   : logMailer;
 
 const app = createApp({
-  db: openDb(dbPath),
+  db: openDb(dbPath, join(root, "drizzle")),
   uploadDir,
   secureCookies: production || process.env.SECURE_COOKIES === "1",
   mailer,
