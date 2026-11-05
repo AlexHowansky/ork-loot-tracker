@@ -35,6 +35,7 @@ export {
   faTag,
   faTrashCan,
   faMagnifyingGlass,
+  faMinus,
   faSort,
   faSortDown,
   faSortUp,

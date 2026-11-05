@@ -7,12 +7,12 @@ import { Money } from "./Money.tsx";
 import { CashForm } from "./SimpleForms.tsx";
 import { useConfirm } from "./Confirm.tsx";
 import { useToast } from "./Toast.tsx";
-import { Icon, faPen, faPlus, faScaleBalanced, faTrash } from "./Icon.tsx";
+import { Icon, faMinus, faPen, faPlus, faScaleBalanced, faTrash } from "./Icon.tsx";
 import type { Mode } from "./Board.tsx";
 
 /** The cash ledger: the GM's adjustments and each split's change. */
 export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
-  const [editing, setEditing] = useState<CashEntryView | "new" | null>(null);
+  const [editing, setEditing] = useState<CashEntryView | "in" | "out" | null>(null);
   const refresh = useRefresh();
   const ask = useConfirm();
   const toast = useToast();
@@ -67,21 +67,32 @@ export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
     <div>
       {gm && (
         <div className="mb-2 flex justify-end">
-          <span className={view.sessions.length ? "" : "tooltip tooltip-left"} data-tip="Create a session first">
+          <span
+            className={view.sessions.length ? "flex gap-2" : "tooltip tooltip-left flex gap-2"}
+            data-tip="Create a session first"
+          >
             <button
               type="button"
               className="btn btn-sm btn-primary"
               disabled={!view.sessions.length}
-              onClick={() => setEditing("new")}
+              onClick={() => setEditing("in")}
             >
-              <Icon icon={faPlus} /> Add entry
+              <Icon icon={faPlus} /> Cash in
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-primary"
+              disabled={!view.sessions.length}
+              onClick={() => setEditing("out")}
+            >
+              <Icon icon={faMinus} /> Cash out
             </button>
           </span>
         </div>
       )}
       {view.cash.length === 0 ? (
         <p className="py-6 text-center text-base-content/60">
-          No cash entries yet.{gm && " Add one to record money paid in or out."}
+          No cash entries yet.{gm && " Use Cash in or Cash out to record money paid in or out."}
         </p>
       ) : (
         <div>
@@ -157,7 +168,8 @@ export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
         <CashForm
           campaign={campaign}
           sessions={view.sessions}
-          entry={editing === "new" ? undefined : editing}
+          entry={typeof editing === "string" ? undefined : editing}
+          direction={typeof editing === "string" ? editing : undefined}
           onClose={() => setEditing(null)}
           onSaved={refresh}
         />

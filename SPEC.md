@@ -252,10 +252,13 @@ they have claimed from the pool.
 
 * The "Cash" tab is the cash ledger, newest first, showing each
   entry's date, session, description, amount (negative when paid out) and
-  the balance after it. The GM can add, edit and delete entries, each with
-  a session (default the latest), a description and a non-zero amount:
-  positive for money paid in (e.g. job earnings), negative for money paid
-  out (e.g. buying goods or services). Adding one needs a session to exist.
+  the balance after it. The GM adds entries with a "Cash in" button, for
+  money paid in (e.g. job earnings), or a "Cash out" button, for money paid
+  out (e.g. buying goods or services). Each entry has a session (default
+  the latest), a description and an amount greater than zero, entered
+  without a sign; the button sets the direction, and money paid out is
+  shown negative. Adding one needs a session to exist. The GM can also
+  edit an entry, including switching it between in and out, and delete it.
   An entry that would take cash below zero, as added, edited or
   deleted, is refused. Each split that changes cash adds a "Loot
   split" entry of its own, showing what was kept back for the reserve, paid

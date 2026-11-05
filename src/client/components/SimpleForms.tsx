@@ -8,7 +8,7 @@ import type {
   CampaignInfo,
   CashEntryView,
 } from "../../shared/types.ts";
-import { formatMoney, parseSignedAmount, subtotal, toInput } from "../../shared/money.ts";
+import { formatMoney, parseAmount, subtotal, toInput } from "../../shared/money.ts";
 import { Field, FormError, withError } from "./Field.tsx";
 import { Modal } from "./Modal.tsx";
 import { CancelButton, SubmitButton } from "./SubmitButton.tsx";
@@ -190,27 +190,35 @@ export function SessionForm({
   );
 }
 
-/** Adds or edits a hand-written cash entry. */
+/**
+ * Adds or edits a hand-written cash entry. A new entry is money paid in or
+ * out, as `direction` says; an edited one takes its direction from its sign.
+ */
 export function CashForm({
   campaign,
   sessions,
   entry,
+  direction: initialDirection = "in",
   onClose,
   onSaved,
 }: {
   campaign: CampaignInfo;
   sessions: SessionView[];
   entry?: CashEntryView;
+  direction?: "in" | "out";
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const [direction, setDirection] = useState<"in" | "out">(
+    entry ? (entry.amount < 0 ? "out" : "in") : initialDirection,
+  );
   const decimals = campaign.currencyDecimals;
   // An entry whose session was deleted stays without one until it's given one.
   const [sessionId, setSessionId] = useState<number | null>(entry ? entry.sessionId : (sessions[0]?.id ?? null));
   const [description, setDescription] = useState(entry?.description ?? "");
-  const [amount, setAmount] = useState(toInput(entry?.amount ?? null, decimals));
+  const [amount, setAmount] = useState(toInput(entry ? Math.abs(entry.amount) : null, decimals));
   const s = useSubmit();
-  const parsed = parseSignedAmount(amount, decimals);
+  const parsed = parseAmount(amount, decimals);
   const amountError =
     parsed === undefined
       ? decimals === 0
@@ -220,7 +228,8 @@ export function CashForm({
   const submit = () =>
     s.run(async () => {
       if (parsed === undefined) return;
-      const body = { sessionId, description, amount: parsed ?? 0 };
+      const magnitude = parsed ?? 0;
+      const body = { sessionId, description, amount: direction === "out" ? -magnitude : magnitude };
       if (entry) await api.patch(`/api/cash/${entry.id}`, body);
       else await api.post(`/api/campaigns/${campaign.id}/cash`, body);
       onSaved();
@@ -228,18 +237,33 @@ export function CashForm({
     });
   return (
     <Modal
-      title={entry ? "Edit cash entry" : "Add cash entry"}
+      title={entry ? "Edit cash entry" : direction === "out" ? "Cash out" : "Cash in"}
       onClose={onClose}
       onSubmit={submit}
       actions={
         <>
           <CancelButton onClick={onClose} />
-          <SubmitButton busy={s.busy}>{entry ? "Save entry" : "Add entry"}</SubmitButton>
+          <SubmitButton busy={s.busy}>{entry ? "Save entry" : direction === "out" ? "Cash out" : "Cash in"}</SubmitButton>
         </>
       }
     >
       <div className="w-80 max-w-full">
         <FormError message={s.hasFieldErrors ? null : s.message} />
+        {entry && (
+          <div className="join mb-2" role="radiogroup" aria-label="Direction">
+            {(["in", "out"] as const).map((d) => (
+              <input
+                key={d}
+                type="radio"
+                name="cash-direction"
+                className="join-item btn btn-sm"
+                aria-label={d === "in" ? "Cash in" : "Cash out"}
+                checked={direction === d}
+                onChange={() => setDirection(d)}
+              />
+            ))}
+          </div>
+        )}
         <Field label="Session" error={s.fields.sessionId}>
           <select
             className={withError("select w-full", s.fields.sessionId)}
@@ -267,7 +291,7 @@ export function CashForm({
         <Field
           label={`Amount (${campaign.currencyLabel || "value"})`}
           error={amountError}
-          hint="Positive for money paid in; put a minus sign in front for money paid out."
+          hint={direction === "out" ? "How much was paid out of cash." : "How much was paid into cash."}
         >
           <input
             inputMode="decimal"
