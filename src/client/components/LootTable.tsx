@@ -49,6 +49,9 @@ const FILTER_LABEL: Record<StatusFilter, string> = {
 /** Whose items to show: anyone's, nobody's, or one character's (by id). */
 export type ClaimFilter = "all" | "none" | string;
 
+/** A session's id, every session, or loot with no session. */
+export type SessionFilter = number | "all" | "none";
+
 export type SortKey =
   | "name"
   | "location"
@@ -94,8 +97,8 @@ export function LootTable({
 }: {
   view: CampaignView;
   mode: Mode;
-  sessionFilter: number | "all";
-  onSessionFilter: (v: number | "all") => void;
+  sessionFilter: SessionFilter;
+  onSessionFilter: (v: SessionFilter) => void;
   statusFilter: StatusFilter;
   onStatusFilter: (v: StatusFilter) => void;
   claimFilter: ClaimFilter;
@@ -141,7 +144,7 @@ export function LootTable({
     subtotal: (l) => (l.unidentified && !gm ? null : l.subtotal),
     status: (l) => LOOT_STATUSES.indexOf(l.status),
     claim: (l) => (l.characterId !== null ? (nameById.get(l.characterId) ?? null) : null),
-    session: (l) => sessionById.get(l.sessionId)?.date ?? null,
+    session: (l) => (l.sessionId !== null ? (sessionById.get(l.sessionId)?.date ?? null) : null),
   };
   const keyOf = sortValue[sort.key];
   const sign = sort.dir === "asc" ? 1 : -1;
@@ -149,7 +152,7 @@ export function LootTable({
     .filter(
       (l) =>
         FILTER[statusFilter](l.status) &&
-        (sessionFilter === "all" || l.sessionId === sessionFilter) &&
+        (sessionFilter === "all" || l.sessionId === (sessionFilter === "none" ? null : sessionFilter)) &&
         (claimedBy === "all" || l.characterId === (claimedBy === "none" ? null : claimedBy)) &&
         (!needle || fold(l.name).includes(needle)),
     )
@@ -165,7 +168,9 @@ export function LootTable({
               ? -1
               : sign * (typeof x === "string" ? byName.compare(x, String(y)) : x - Number(y));
       // Ties fall back to name, then session, then entry order.
-      return byKey || byName.compare(a.name, b.name) || a.sessionId - b.sessionId || a.id - b.id;
+      return (
+        byKey || byName.compare(a.name, b.name) || (a.sessionId ?? Infinity) - (b.sessionId ?? Infinity) || a.id - b.id
+      );
     });
   // Unidentified and pending items count as nothing, as they do in the pool.
   const shownTotal = rows.reduce(
@@ -331,9 +336,13 @@ export function LootTable({
           className="select select-sm w-auto"
           aria-label="Session"
           value={sessionFilter}
-          onChange={(e) => onSessionFilter(e.target.value === "all" ? "all" : Number(e.target.value))}
+          onChange={(e) => {
+            const v = e.target.value;
+            onSessionFilter(v === "all" || v === "none" ? v : Number(v));
+          }}
         >
           <option value="all">All sessions</option>
+          <option value="none">No session</option>
           {view.sessions.map((s) => (
             <option key={s.id} value={s.id}>
               {s.date}
@@ -375,19 +384,9 @@ export function LootTable({
           {rows.length} {rows.length === 1 ? "item" : "items"} · <Money amount={shownTotal} campaign={campaign} />
         </span>
         {gm && (
-          <span
-            className={`ml-auto ${view.sessions.length ? "" : "tooltip tooltip-left"}`}
-            data-tip="Create a session first"
-          >
-            <button
-              type="button"
-              className="btn btn-sm btn-primary"
-              disabled={!view.sessions.length}
-              onClick={() => setEditing("new")}
-            >
-              <Icon icon={faPlus} /> Add loot
-            </button>
-          </span>
+          <button type="button" className="btn btn-sm btn-primary ml-auto" onClick={() => setEditing("new")}>
+            <Icon icon={faPlus} /> Add loot
+          </button>
         )}
       </div>
 
@@ -417,7 +416,7 @@ export function LootTable({
             <tbody>
               {rows.map((item) => {
                 const mine = mode.kind === "player" && item.characterId === mode.characterId;
-                const session = sessionById.get(item.sessionId);
+                const session = item.sessionId !== null ? sessionById.get(item.sessionId) : undefined;
                 const claimant = item.characterId !== null ? nameById.get(item.characterId) : undefined;
                 return (
                   <tr key={item.id} className={mine ? "bg-warning/10" : ""}>
@@ -503,7 +502,7 @@ export function LootTable({
                             {session.date}
                           </span>
                         ) : (
-                          session?.date
+                          (session?.date ?? "—")
                         )}
                       </td>
                     )}
@@ -551,7 +550,7 @@ export function LootTable({
         <LootForm
           view={view}
           item={editing === "new" ? undefined : editing}
-          defaultSessionId={sessionFilter === "all" ? undefined : sessionFilter}
+          defaultSessionId={sessionFilter === "all" ? undefined : sessionFilter === "none" ? null : sessionFilter}
           onClose={() => setEditing(null)}
           onSaved={refresh}
         />

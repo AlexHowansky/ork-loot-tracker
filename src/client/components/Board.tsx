@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import type { CampaignView } from "../../shared/types.ts";
 import { Money } from "./Money.tsx";
-import { DEFAULT_SORT, LootTable, type ClaimFilter, type LootSort, type StatusFilter } from "./LootTable.tsx";
+import { DEFAULT_SORT, LootTable, type ClaimFilter, type LootSort, type SessionFilter, type StatusFilter } from "./LootTable.tsx";
 import { CharacterTable } from "./CharacterTable.tsx";
 import { ObserverTable } from "./ObserverTable.tsx";
 import { SessionTable } from "./SessionTable.tsx";
@@ -34,7 +34,7 @@ export function CampaignBoard({
   const [chosenTab, setTab] = useState<Tab>("loot");
   // The Observers tab goes once the campaign is made public.
   const tab = chosenTab === "observers" && !view.observers ? "loot" : chosenTab;
-  const [sessionFilter, setSessionFilter] = useState<number | "all">("all");
+  const [sessionFilter, setSessionFilter] = useState<SessionFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("pool");
   const [claimFilter, setClaimFilter] = useState<ClaimFilter>("all");
   const [search, setSearch] = useState("");

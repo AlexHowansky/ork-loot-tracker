@@ -48,7 +48,16 @@ async function seed() {
   }
   const s = (await gmA.post(`/api/campaigns/${c.id}/sessions`, { date: "2026-01-05" })).body;
   const view = async () => (await gmA.get<CampaignView>(`/api/campaigns/${c.id}`)).body;
+  seededCampaign.set(s.id, c.id);
   return { campaignId: c.id as string, characterIds: ids, sessionId: s.id as number, view };
+}
+
+/** Each seeded session's campaign, so loot can be added by session. */
+const seededCampaign = new Map<number, string>();
+
+/** Adds loot to a seeded session, through its campaign. */
+function addLoot(client: Client, sessionId: number, body: object) {
+  return client.post(`/api/campaigns/${seededCampaign.get(sessionId)}/loot`, { sessionId, ...body });
 }
 
 async function join(code: string, ip?: string) {
@@ -290,7 +299,7 @@ describe("campaign access", () => {
     expect((await gmB.patch(`/api/campaigns/${campaignId}`, campaignBody)).status).toBe(404);
     expect((await gmB.del(`/api/campaigns/${campaignId}`)).status).toBe(404);
     expect((await gmB.post(`/api/characters/${characterIds[0]}/code`)).status).toBe(404);
-    expect((await gmB.post(`/api/sessions/${sessionId}/loot`, { name: "x" })).status).toBe(404);
+    expect((await addLoot(gmB, sessionId, { name: "x" })).status).toBe(404);
     expect((await gmB.get("/api/campaigns")).body).toEqual([]);
   });
 
@@ -355,7 +364,7 @@ describe("campaign access", () => {
 
   test("decimals lock once loot exists", async () => {
     const { campaignId, sessionId } = await seed();
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Gem", value: 100 });
+    await addLoot(gmA, sessionId, { name: "Gem", value: 100 });
     const res = await gmA.patch(`/api/campaigns/${campaignId}`, { ...campaignBody, currencyDecimals: 0 });
     expect(res.status).toBe(400);
   });
@@ -387,7 +396,7 @@ describe("co-GMs", () => {
     expect(seen.body.gms!.find((g) => g.you)!.email).toBe("bob@example.com");
     expect((await gmB.patch(`/api/campaigns/${campaignId}`, campaignBody)).status).toBe(200);
     expect((await gmB.post(`/api/characters/${characterIds[0]}/code`)).status).toBe(200);
-    const loot = await gmB.post(`/api/sessions/${sessionId}/loot`, { name: "Gem", value: 100 });
+    const loot = await addLoot(gmB, sessionId, { name: "Gem", value: 100 });
     expect(loot.status).toBe(200);
     expect((await gmB.del(`/api/loot/${loot.body.id}`)).status).toBe(200);
     expect((await gmB.post(`/api/campaigns/${campaignId}/observers`, { name: "Kim" })).status).toBe(200);
@@ -431,7 +440,7 @@ describe("co-GMs", () => {
     // Bob removes Alice, the campaign's creator.
     expect((await gmB.del(`/api/campaigns/${campaignId}/gms/${aliceId}`)).status).toBe(200);
     expect((await gmA.get(`/api/campaigns/${campaignId}`)).status).toBe(404);
-    expect((await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "x" })).status).toBe(404);
+    expect((await addLoot(gmA, sessionId, { name: "x" })).status).toBe(404);
     expect((await gmA.get("/api/campaigns")).body).toEqual([]);
     expect((await gmB.del(`/api/campaigns/${campaignId}/gms/${aliceId}`)).status).toBe(404);
 
@@ -576,7 +585,7 @@ describe("observers", () => {
 
   test("an observer can't claim, release or play a character", async () => {
     const { observerId, player, sessionId } = await observe();
-    const gem = (await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Gem", value: 500 })).body;
+    const gem = (await addLoot(gmA, sessionId, { name: "Gem", value: 500 })).body;
     const claimed = await player.post(`/api/play/${observerId}/claim`, { lootId: gem.id, quantity: 1 });
     expect(claimed.status).toBe(404);
     expect((await player.post(`/api/play/${observerId}/release`, { lootId: gem.id })).status).toBe(404);
@@ -680,8 +689,8 @@ describe("public campaigns", () => {
 
   test("anyone can read a public campaign, as a player sees it", async () => {
     const { campaignId, sessionId } = await seed();
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Gem", value: 500 });
-    await gmA.post(`/api/sessions/${sessionId}/loot`, {
+    await addLoot(gmA, sessionId, { name: "Gem", value: 500 });
+    await addLoot(gmA, sessionId, {
       name: "Odd ring",
       value: 900,
       description: "Worth a lot",
@@ -708,7 +717,7 @@ describe("public campaigns", () => {
 
   test("public readers can change nothing", async () => {
     const { campaignId, sessionId, characterIds } = await seed();
-    const gem = (await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Gem", value: 500 })).body;
+    const gem = (await addLoot(gmA, sessionId, { name: "Gem", value: 500 })).body;
     await makePublic(campaignId);
     const anon = new Client(ctx.app);
     expect((await anon.post(`/api/public/${campaignId}`, {})).status).toBe(405);
@@ -749,7 +758,7 @@ describe("claims", () => {
   async function withPotions() {
     const s = await seed();
     const potion = (
-      await gmA.post(`/api/sessions/${s.sessionId}/loot`, {
+      await addLoot(gmA, s.sessionId, {
         name: "Potion",
         quantity: 5,
         value: 5000,
@@ -876,7 +885,7 @@ describe("claims", () => {
   test("players can't claim loot from another campaign", async () => {
     const { amiri } = await withPotions();
     const other = await seed();
-    const gem = (await gmA.post(`/api/sessions/${other.sessionId}/loot`, { name: "Gem" })).body;
+    const gem = (await addLoot(gmA, other.sessionId, { name: "Gem" })).body;
     const res = await amiri.client.post(`/api/play/${amiri.id}/claim`, { lootId: gem.id, quantity: 1 });
     expect(res.status).toBe(404);
   });
@@ -897,7 +906,7 @@ describe("claims", () => {
 describe("loot split", () => {
   test("pays out by shares minus claims and updates statuses", async () => {
     const { campaignId, sessionId, view, characterIds } = await seed();
-    const add = (body: object) => gmA.post(`/api/sessions/${sessionId}/loot`, body);
+    const add = (body: object) => addLoot(gmA, sessionId, body);
     // Subtotals at 50%: sword 1000, gems 3 × 200 = 600, fund 400.
     await add({ name: "Sword", value: 2000 });
     await add({ name: "Gem", quantity: 3, value: 400 });
@@ -935,7 +944,7 @@ describe("loot split", () => {
   test("leftovers become cash, which the next split pays out", async () => {
     const { campaignId, sessionId, view } = await seed();
     // 4 shares; a subtotal of 1003 leaves 3 over.
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Statue", value: 2006 });
+    await addLoot(gmA, sessionId, { name: "Statue", value: 2006 });
 
     const preview = (await gmA.get(`/api/campaigns/${campaignId}/split/preview`)).body;
     expect(preview.leftover).toBe(3);
@@ -947,7 +956,7 @@ describe("loot split", () => {
     expect((await view()).campaign.cash).toBe(3);
 
     // 1002 of loot plus 3 of cash is 1005: 251 a share, 1 over.
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Vase", value: 2004 });
+    await addLoot(gmA, sessionId, { name: "Vase", value: 2004 });
     const before = await view();
     expect(before.characters.map((c) => c.gross).sort()).toEqual([251, 251, 502]);
     const next = (await gmA.get(`/api/campaigns/${campaignId}/split/preview`)).body;
@@ -964,7 +973,7 @@ describe("loot split", () => {
     const [amiri] = characterIds as [string];
     const amiriCode = (await view()).characters.find((c) => c.id === amiri)!.joinCode!;
     const { player } = await join(amiriCode);
-    const add = (body: object) => gmA.post(`/api/sessions/${sessionId}/loot`, body);
+    const add = (body: object) => addLoot(gmA, sessionId, body);
     await add({ name: "Sword", value: 2000 });
     const wands = (
       await add({
@@ -1022,7 +1031,7 @@ describe("loot split", () => {
     const [amiri] = characterIds as [string];
     const amiriCode = (await view()).characters.find((c) => c.id === amiri)!.joinCode!;
     const { player } = await join(amiriCode);
-    const add = (body: object) => gmA.post(`/api/sessions/${sessionId}/loot`, body);
+    const add = (body: object) => addLoot(gmA, sessionId, body);
     await add({ name: "Sword", value: 2000 });
     const idol = (await add({ name: "Golden idol", value: 8000, status: "pending" })).body;
     expect(idol.status).toBe("pending");
@@ -1061,7 +1070,7 @@ describe("loot split", () => {
   test("the latest split can be undone", async () => {
     const { campaignId, sessionId, characterIds, view } = await seed();
     const [amiri] = characterIds as [string];
-    const add = (body: object) => gmA.post(`/api/sessions/${sessionId}/loot`, body);
+    const add = (body: object) => addLoot(gmA, sessionId, body);
     // 4 shares; 1003 leaves 3 of cash.
     await add({ name: "Statue", value: 2006 });
     await add({ name: "Ring", value: 0, status: "claimed", characterId: amiri });
@@ -1095,8 +1104,8 @@ describe("loot split", () => {
   test("an undone claim goes back to its claimant", async () => {
     const { campaignId, sessionId, characterIds, view } = await seed();
     const [amiri] = characterIds as [string];
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Sword", value: 4000 });
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Ring", value: 800, status: "claimed", characterId: amiri });
+    await addLoot(gmA, sessionId, { name: "Sword", value: 4000 });
+    await addLoot(gmA, sessionId, { name: "Ring", value: 800, status: "claimed", characterId: amiri });
     const s = (await gmA.post(`/api/campaigns/${campaignId}/split`)).body;
     const gmB = new Client(ctx.app);
     await gmB.login("bob@example.com");
@@ -1107,7 +1116,7 @@ describe("loot split", () => {
 
   test("characters with split history can't be deleted", async () => {
     const { campaignId, sessionId, characterIds } = await seed();
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Sword", value: 2000 });
+    await addLoot(gmA, sessionId, { name: "Sword", value: 2000 });
     await gmA.post(`/api/campaigns/${campaignId}/split`);
     expect((await gmA.del(`/api/characters/${characterIds[0]}`)).status).toBe(409);
   });
@@ -1118,8 +1127,8 @@ describe("loot split", () => {
     expect((await gmA.patch(`/api/characters/${ezren}`, { name: "Ezren", shares: 0 })).status).toBe(200);
     expect((await gmA.patch(`/api/characters/${amiri}`, { name: "Amiri", shares: -1 })).status).toBe(400);
     // Subtotals at 50%: sword 1000, ring 200 claimed by Amiri.
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Sword", value: 2000 });
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Ring", value: 400, status: "claimed", characterId: amiri });
+    await addLoot(gmA, sessionId, { name: "Sword", value: 2000 });
+    await addLoot(gmA, sessionId, { name: "Ring", value: 400, status: "claimed", characterId: amiri });
     expect((await view()).pool.totalShares).toBe(3);
 
     const res = await gmA.post(`/api/campaigns/${campaignId}/split`);
@@ -1141,7 +1150,7 @@ describe("loot split", () => {
     )!.joinCode!;
     const { player } = await join(amiriCode);
     await gmA.patch(`/api/characters/${amiri}`, { name: "Amiri", shares: 0 });
-    const add = (body: object) => gmA.post(`/api/sessions/${sessionId}/loot`, body);
+    const add = (body: object) => addLoot(gmA, sessionId, body);
     const sword = (await add({ name: "Sword", value: 2000 })).body;
 
     const mine = await player.post(`/api/play/${amiri}/claim`, { lootId: sword.id, quantity: 1 });
@@ -1156,7 +1165,7 @@ describe("loot split", () => {
   test("dropping a character to no shares releases their claims", async () => {
     const { sessionId, characterIds, view } = await seed();
     const [amiri, ezren] = characterIds as [string, string];
-    const add = (body: object) => gmA.post(`/api/sessions/${sessionId}/loot`, body);
+    const add = (body: object) => addLoot(gmA, sessionId, body);
     const gems = (await add({ name: "Gem", quantity: 3, value: 400 })).body;
     await gmA.post(`/api/loot/${gems.id}/claim`, { characterId: amiri, quantity: 2 });
     await add({ name: "Ring", value: 400, status: "claimed", characterId: amiri });
@@ -1178,7 +1187,7 @@ describe("loot split", () => {
     for (const [i, name] of ["Amiri", "Ezren", "Valeros"].entries()) {
       await gmA.patch(`/api/characters/${characterIds[i]}`, { name, shares: 0 });
     }
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Sword", value: 2000 });
+    await addLoot(gmA, sessionId, { name: "Sword", value: 2000 });
     const res = await gmA.post(`/api/campaigns/${campaignId}/split`);
     expect(res.status).toBe(400);
     expect(res.body.error).toContain("at least one character a share");
@@ -1188,8 +1197,8 @@ describe("loot split", () => {
     const { campaignId, sessionId, characterIds, view } = await seed();
     const [amiri] = characterIds as [string];
     // 4 shares of 1200 is 300 each; Amiri's 800 ring leaves them 500 short.
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Sword", value: 800 });
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Ring", value: 1600, status: "claimed", characterId: amiri });
+    await addLoot(gmA, sessionId, { name: "Sword", value: 800 });
+    await addLoot(gmA, sessionId, { name: "Ring", value: 1600, status: "claimed", characterId: amiri });
     const preview = (await gmA.get(`/api/campaigns/${campaignId}/split/preview`)).body;
     expect(preview.shares.find((s: any) => s.characterName === "Amiri").net).toBe(-500);
 
@@ -1204,7 +1213,7 @@ describe("loot split", () => {
   test("with debt allowed, a shortfall carries forward until repaid", async () => {
     const { campaignId, sessionId, characterIds, view } = await seed();
     const [amiri] = characterIds as [string];
-    const add = (body: object) => gmA.post(`/api/sessions/${sessionId}/loot`, body);
+    const add = (body: object) => addLoot(gmA, sessionId, body);
     const split = async () => (await gmA.post(`/api/campaigns/${campaignId}/split`)).body;
     const amiriNow = async () => (await view()).characters.find((c) => c.id === amiri)!;
     const setDebt = (allowDebt: boolean) =>
@@ -1253,7 +1262,7 @@ describe("loot split", () => {
   test("a character with no shares keeps their debt", async () => {
     const { campaignId, sessionId, characterIds, view } = await seed();
     const [amiri] = characterIds as [string];
-    const add = (body: object) => gmA.post(`/api/sessions/${sessionId}/loot`, body);
+    const add = (body: object) => addLoot(gmA, sessionId, body);
     await gmA.patch(`/api/campaigns/${campaignId}`, { ...campaignBody, allowDebt: true });
     await add({ name: "Ring", value: 1600, status: "claimed", characterId: amiri });
     await gmA.post(`/api/campaigns/${campaignId}/split`);
@@ -1268,7 +1277,7 @@ describe("loot split", () => {
 
   test("a partial update leaves other fields alone", async () => {
     const { sessionId } = await seed();
-    const gem = (await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Gem", quantity: 4, value: 900, marketPct: 80 })).body;
+    const gem = (await addLoot(gmA, sessionId, { name: "Gem", quantity: 4, value: 900, marketPct: 80 })).body;
     const res = await gmA.patch(`/api/loot/${gem.id}`, { status: "party" });
     expect(res.body).toMatchObject({ quantity: 4, value: 900, marketPct: 80, status: "party" });
   });
@@ -1276,20 +1285,73 @@ describe("loot split", () => {
   test("links must be http or https web addresses", async () => {
     const { sessionId } = await seed();
     for (const link of ["javascript:alert(1)", "data:text/html,hi", "not a url"]) {
-      const res = await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Map", link });
+      const res = await addLoot(gmA, sessionId, { name: "Map", link });
       expect(res.status).toBe(400);
       expect(res.body.fields.link).toBeDefined();
     }
-    const map = (await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Map", link: " https://example.com/map " })).body;
+    const map = (await addLoot(gmA, sessionId, { name: "Map", link: " https://example.com/map " })).body;
     expect(map.link).toBe("https://example.com/map");
     expect((await gmA.patch(`/api/loot/${map.id}`, { link: "" })).body.link).toBeNull();
   });
 
   test("claimed loot needs a character from the campaign", async () => {
     const { sessionId } = await seed();
-    const res = await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Ring", status: "claimed" });
+    const res = await addLoot(gmA, sessionId, { name: "Ring", status: "claimed" });
     expect(res.status).toBe(400);
     expect(res.body.fields.characterId).toBeDefined();
+  });
+});
+
+describe("loot sessions", () => {
+  test("loot needs no session, and only one from its own campaign", async () => {
+    const { campaignId, sessionId, view } = await seed();
+    const url = `/api/campaigns/${campaignId}/loot`;
+
+    const ring = await gmA.post(url, { name: "Ring", status: "pending" });
+    expect(ring.status).toBe(200);
+    expect(ring.body.sessionId).toBeNull();
+    expect((await view()).sessions[0]!.itemCount).toBe(0);
+
+    const other = (await gmA.post("/api/campaigns", campaignBody)).body;
+    const foreign = (await gmA.post(`/api/campaigns/${other.id}/sessions`, { date: "2026-03-01" })).body;
+    const refused = await gmA.post(url, { name: "Gem", sessionId: foreign.id });
+    expect(refused.status).toBe(400);
+    expect(refused.body.fields.sessionId).toBeDefined();
+    const moved = await gmA.patch(`/api/loot/${ring.body.id}`, { sessionId: foreign.id });
+    expect(moved.status).toBe(400);
+
+    // Found in play: it joins a session, and can leave it again.
+    const found = await gmA.patch(`/api/loot/${ring.body.id}`, { sessionId, status: "available" });
+    expect(found.body).toMatchObject({ sessionId, status: "available" });
+    expect((await view()).sessions[0]!.itemCount).toBe(1);
+    const off = await gmA.patch(`/api/loot/${ring.body.id}`, { sessionId: null });
+    expect(off.body.sessionId).toBeNull();
+
+    const gmB = new Client(ctx.app);
+    await gmB.login("bob@example.com");
+    expect((await gmB.post(url, { name: "x" })).status).toBe(404);
+  });
+
+  test("deleting a session keeps its loot, with no session", async () => {
+    const { sessionId, view } = await seed();
+    const gem = (await addLoot(gmA, sessionId, { name: "Gem", value: 500 })).body;
+    expect((await gmA.del(`/api/sessions/${sessionId}`)).status).toBe(200);
+    const now = await view();
+    expect(now.loot).toMatchObject([{ id: gem.id, sessionId: null }]);
+    expect(now.pool.sellable).toBe(250);
+  });
+
+  test("a released claim merges back into its twin with no session", async () => {
+    const { campaignId, characterIds } = await seed();
+    const potion = (
+      await gmA.post(`/api/campaigns/${campaignId}/loot`, { name: "Potion", quantity: 3 })
+    ).body;
+    const claim = { characterId: characterIds[0], quantity: 1 };
+    const claimed = (await gmA.post(`/api/loot/${potion.id}/claim`, claim)).body;
+    expect(claimed.sessionId).toBeNull();
+    await gmA.post(`/api/loot/${claimed.id}/release`);
+    const loot = (await gmA.get<CampaignView>(`/api/campaigns/${campaignId}`)).body.loot;
+    expect(loot).toMatchObject([{ id: potion.id, quantity: 3, sessionId: null }]);
   });
 });
 
@@ -1307,7 +1369,7 @@ describe("cash", () => {
     expect((await setHold(100)).body.cashHold).toBe(100);
 
     // 1003 of loot gives up 100 to the hold; 903 over 4 shares is 225, 3 over.
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Statue", value: 2006 });
+    await addLoot(gmA, sessionId, { name: "Statue", value: 2006 });
     expect((await view()).pool.cashIn).toBe(-100);
     const preview = (await gmA.get(`/api/campaigns/${campaignId}/split/preview`)).body;
     expect(preview).toMatchObject({ total: 903, cash: -100, leftover: 3 });
@@ -1319,7 +1381,7 @@ describe("cash", () => {
     // With the hold dropped to 0, all 103 is paid out: 1103 is 275 a share
     // and 3 over, leaving 3.
     await setHold(0);
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Vase", value: 2000 });
+    await addLoot(gmA, sessionId, { name: "Vase", value: 2000 });
     now = await view();
     expect(now.pool.cashIn).toBe(103);
     expect(now.characters.map((c) => c.gross).sort()).toEqual([275, 275, 550]);
@@ -1336,7 +1398,7 @@ describe("cash", () => {
   test("a hold larger than the loot takes all of it", async () => {
     const { campaignId, sessionId, view } = await seed();
     await gmA.patch(`/api/campaigns/${campaignId}`, { ...campaignBody, cashHold: 5000 });
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Gem", value: 200 });
+    await addLoot(gmA, sessionId, { name: "Gem", value: 200 });
     const split = (await gmA.post(`/api/campaigns/${campaignId}/split`)).body;
     expect(split).toMatchObject({ total: 0, cash: -100, leftover: 0 });
     expect(split.shares.every((sh: any) => sh.net === 0)).toBe(true);
@@ -1392,7 +1454,7 @@ describe("cash", () => {
   test("a split's entry can only be removed by undoing the split", async () => {
     const { campaignId, sessionId, view } = await seed();
     await gmA.patch(`/api/campaigns/${campaignId}`, { ...campaignBody, cashHold: 100 });
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Statue", value: 2006 });
+    await addLoot(gmA, sessionId, { name: "Statue", value: 2006 });
     const split = (await gmA.post(`/api/campaigns/${campaignId}/split`)).body;
     const [splitEntry] = (await view()).cash;
     const body = { sessionId, description: "x", amount: 1 };
@@ -1418,17 +1480,17 @@ describe("cash", () => {
     const entries = `/api/campaigns/${campaignId}/cash`;
     const entry = (amount: number) =>
       gmA.post(entries, { sessionId, description: "Hoard", amount });
-    const addLoot = (body: object) => gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Gold", ...body });
+    const addGold = (body: object) => addLoot(gmA, sessionId, { name: "Gold", ...body });
 
     expect((await entry(MAX_MONEY + 1)).body.fields.amount).toBe("That amount is too large.");
-    expect((await addLoot({ value: MAX_MONEY + 1 })).body.fields.value).toBe("That value is too large.");
+    expect((await addGold({ value: MAX_MONEY + 1 })).body.fields.value).toBe("That value is too large.");
     expect((await gmA.patch(`/api/campaigns/${campaignId}`, { ...campaignBody, cashHold: MAX_MONEY + 100 })).status).toBe(400);
 
     // Each amount is allowed, but not quantity × value, nor the two together.
-    const stack = await addLoot({ value: MAX_MONEY, quantity: 3 });
+    const stack = await addGold({ value: MAX_MONEY, quantity: 3 });
     expect(stack.status).toBe(400);
     expect(stack.body.fields.value).toBe("That's more than the campaign can record.");
-    const item = (await addLoot({ value: MAX_MONEY, marketPct: 100 })).body;
+    const item = (await addGold({ value: MAX_MONEY, marketPct: 100 })).body;
     const over = await entry(1);
     expect(over.status).toBe(400);
     expect(over.body.error).toContain("the most it can record");
@@ -1486,7 +1548,7 @@ describe("cash", () => {
 
   test("a split's entry doesn't belong to a session", async () => {
     const { campaignId, sessionId, view } = await seed();
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Statue", value: 2006 });
+    await addLoot(gmA, sessionId, { name: "Statue", value: 2006 });
     await gmA.post(`/api/campaigns/${campaignId}/split`);
     const [entry] = (await view()).cash;
     expect(entry!.sessionId).toBeNull();
@@ -1677,7 +1739,7 @@ describe("live updates", () => {
 
   test("the GM's stream hears a player's claim, with the claimant's tab id", async () => {
     const { campaignId, sessionId, view } = await seed();
-    const potion = (await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Potion", quantity: 3 })).body;
+    const potion = (await addLoot(gmA, sessionId, { name: "Potion", quantity: 3 })).body;
     const code = (await view()).characters[0]!.joinCode!;
     const { player, res } = await join(code);
     const stream = await openStream(gmA, `/api/campaigns/${campaignId}/events`);
@@ -1693,7 +1755,7 @@ describe("live updates", () => {
 
   test("claims and releases carry a notice for other tabs", async () => {
     const { campaignId, sessionId, view } = await seed();
-    const potion = (await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Potion", quantity: 3 })).body;
+    const potion = (await addLoot(gmA, sessionId, { name: "Potion", quantity: 3 })).body;
     const first = (await view()).characters[0]!;
     const { player, res } = await join(first.joinCode!);
     const playerStream = await openStream(player, `/api/play/${res.body.characterId}/events`);
@@ -1715,7 +1777,7 @@ describe("live updates", () => {
     expect((await playerStream.nextEvent()).notices).toEqual([
       { ...claimNotice, kind: "released", byGm: true },
     ]);
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Rope" });
+    await addLoot(gmA, sessionId, { name: "Rope" });
     expect((await playerStream.nextEvent()).notices).toEqual([]);
     gmStream.close();
     playerStream.close();
@@ -1726,7 +1788,7 @@ describe("live updates", () => {
     const { player, res } = await join((await view()).characters[0]!.joinCode!);
     const stream = await openStream(player, `/api/play/${res.body.characterId}/events`);
     expect(stream.res.status).toBe(200);
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Rope" });
+    await addLoot(gmA, sessionId, { name: "Rope" });
     expect(await stream.next()).toBeNull();
     stream.close();
   });
@@ -1772,7 +1834,7 @@ describe("live updates", () => {
     const bobStream = await openStream(gmB, `/api/campaigns/${campaignId}/events`);
     const bobOwn = await openStream(gmB, `/api/campaigns/${bobs.id}/events`);
 
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Gem" });
+    await addLoot(gmA, sessionId, { name: "Gem" });
     expect(await bobStream.next()).toBeNull();
 
     const bobId = (await gmB.get("/api/auth/me")).body.gm.id;
@@ -1866,7 +1928,7 @@ describe("live updates", () => {
     const stream = await openStream(anon, `/api/public/${campaignId}/events`);
     expect(stream.res.status).toBe(200);
     const gmStream = await openStream(gmA, `/api/campaigns/${campaignId}/events`);
-    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Gem", value: 500 });
+    await addLoot(gmA, sessionId, { name: "Gem", value: 500 });
     expect(await stream.next()).toBeNull();
     expect(await gmStream.next()).toBeNull();
 
@@ -1897,7 +1959,7 @@ describe("live updates", () => {
   test("a rejected change announces nothing", async () => {
     const { campaignId, sessionId } = await seed();
     const seen = watch(campaignId);
-    expect((await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "" })).status).toBe(400);
+    expect((await addLoot(gmA, sessionId, { name: "" })).status).toBe(400);
     expect(seen.count).toBe(0);
   });
 
@@ -1919,11 +1981,11 @@ describe("live updates", () => {
     const s = (await gmA.post(`/api/campaigns/${campaignId}/sessions`, { date: "2026-02-01" })).body;
     await expectAnnounced(gmA.patch(`/api/sessions/${s.id}`, { date: "2026-02-02" }));
     await expectAnnounced(gmA.del(`/api/sessions/${s.id}`));
-    const rope = (await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Rope", value: 100 })).body;
+    const rope = (await addLoot(gmA, sessionId, { name: "Rope", value: 100 })).body;
     await expectAnnounced(gmA.patch(`/api/loot/${rope.id}`, { name: "Silk rope" }));
     await expectAnnounced(gmA.post(`/api/loot/${rope.id}/claim`, { characterId: amiri, quantity: 1 }));
     await expectAnnounced(gmA.post(`/api/loot/${rope.id}/release`));
-    const gem = (await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Gem", value: 500 })).body;
+    const gem = (await addLoot(gmA, sessionId, { name: "Gem", value: 500 })).body;
     const code = (await view()).characters.find((c) => c.id === amiri)!.joinCode!;
     const player = new Client(ctx.app, "10.0.0.9");
     await expectAnnounced(player.post("/api/join", { code }));

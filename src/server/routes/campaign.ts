@@ -7,7 +7,6 @@ import {
   loot,
   observer,
   cashEntry,
-  session,
 } from "../db/schema.ts";
 import { requireGm } from "../lib/auth.ts";
 import { badRequest, conflict, notFound } from "../lib/errors.ts";
@@ -145,8 +144,7 @@ export function campaignRoutes(r: Router) {
       const hasLoot = ctx.db
         .select({ n: sql<number>`count(*)` })
         .from(loot)
-        .innerJoin(session, eq(session.id, loot.sessionId))
-        .where(eq(session.campaignId, c.id))
+        .where(eq(loot.campaignId, c.id))
         .get();
       if ((hasLoot?.n ?? 0) > 0) {
         throw badRequest(

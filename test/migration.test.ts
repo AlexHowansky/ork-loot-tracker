@@ -55,3 +55,38 @@ test("0004 gives each existing campaign its GM and keeps its contents", () => {
   expect(cols.map((c) => c.name)).not.toContain("gm_id");
   db.close();
 });
+
+test("0006 gives existing loot its session's campaign", () => {
+  dir = mkdtempSync(join(tmpdir(), "phat-loot-migrate-"));
+  const dbPath = join(dir, "app.db");
+  openDb(dbPath, migrationsBefore("0006_loot_campaign"));
+
+  const old = new Database(dbPath);
+  const now = Date.now();
+  old.run("INSERT INTO gm (id, email, password_hash, created_at) VALUES ('g1', 'a@x.test', 'h', ?)", [now]);
+  old.run(
+    "INSERT INTO campaign (id, name, start_date, created_at, updated_at) " +
+      "VALUES ('c1', 'Runelords', '2026-01-05', ?, ?)",
+    [now, now],
+  );
+  old.run("INSERT INTO campaign_gm (campaign_id, gm_id, created_at) VALUES ('c1', 'g1', ?)", [now]);
+  old.run("INSERT INTO session (id, campaign_id, date, created_at) VALUES (7, 'c1', '2026-01-05', ?)", [now]);
+  old.run(
+    "INSERT INTO loot (session_id, name, created_at, updated_at) VALUES (7, 'Gem', ?, ?)",
+    [now, now],
+  );
+  old.close();
+
+  openDb(dbPath, DRIZZLE);
+  const db = new Database(dbPath);
+  expect(db.query("SELECT campaign_id, session_id, name FROM loot").all()).toEqual([
+    { campaign_id: "c1", session_id: 7, name: "Gem" },
+  ]);
+  // Deleting the session now leaves its loot behind.
+  db.run("PRAGMA foreign_keys = ON");
+  db.run("DELETE FROM session");
+  expect(db.query("SELECT campaign_id, session_id FROM loot").all()).toEqual([
+    { campaign_id: "c1", session_id: null },
+  ]);
+  db.close();
+});

@@ -14,7 +14,7 @@ import { ReferenceLink } from "./ReferenceLink.tsx";
 import { CancelButton, SubmitButton } from "./SubmitButton.tsx";
 import { useSubmit } from "./useSubmit.ts";
 
-/** GM form for adding loot to a session or editing an item. */
+/** GM form for adding loot, with or without a session, or editing an item. */
 export function LootForm({
   view,
   item,
@@ -24,13 +24,16 @@ export function LootForm({
 }: {
   view: CampaignView;
   item?: LootView;
-  defaultSessionId?: number;
+  /** Null starts with no session; left out, the latest session. */
+  defaultSessionId?: number | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const { campaign } = view;
   const decimals = campaign.currencyDecimals;
-  const [sessionId, setSessionId] = useState(item?.sessionId ?? defaultSessionId ?? view.sessions[0]?.id ?? 0);
+  const [sessionId, setSessionId] = useState<number | null>(
+    item ? item.sessionId : defaultSessionId !== undefined ? defaultSessionId : (view.sessions[0]?.id ?? null),
+  );
   const [name, setName] = useState(item?.name ?? "");
   const [location, setLocation] = useState(item?.location ?? "");
   const [description, setDescription] = useState(item?.description ?? "");
@@ -59,6 +62,7 @@ export function LootForm({
     s.run(async () => {
       if (parsedValue === undefined) return;
       const body = {
+        sessionId,
         name,
         location: location || null,
         description: description || null,
@@ -71,7 +75,7 @@ export function LootForm({
         characterId: needsCharacter ? characterId : null,
       };
       if (item) await api.patch(`/api/loot/${item.id}`, body);
-      else await api.post(`/api/sessions/${sessionId}/loot`, body);
+      else await api.post(`/api/campaigns/${campaign.id}/loot`, body);
       onSaved();
       if (again) {
         setName("");
@@ -108,18 +112,21 @@ export function LootForm({
             Added {added} {added === 1 ? "item" : "items"}.
           </div>
         )}
-        {!item && (
-          <Field label="Session">
-            <select className="select w-full" value={sessionId} onChange={(e) => setSessionId(Number(e.target.value))}>
-              {view.sessions.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.date}
-                  {s.title ? ` — ${s.title}` : ""}
-                </option>
-              ))}
-            </select>
-          </Field>
-        )}
+        <Field label="Session" error={s.fields.sessionId}>
+          <select
+            className={withError("select w-full", s.fields.sessionId)}
+            value={sessionId ?? ""}
+            onChange={(e) => setSessionId(e.target.value === "" ? null : Number(e.target.value))}
+          >
+            <option value="">No session</option>
+            {view.sessions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.date}
+                {s.title ? ` — ${s.title}` : ""}
+              </option>
+            ))}
+          </select>
+        </Field>
         <div className="grid grid-cols-1 gap-x-3 sm:grid-cols-2">
           <Field label="Name" error={s.fields.name}>
             <input

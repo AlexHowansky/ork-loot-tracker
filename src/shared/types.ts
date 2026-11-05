@@ -104,7 +104,8 @@ export interface SessionView {
 
 export interface LootView {
   id: number;
-  sessionId: number;
+  /** Null for loot not yet found in play, or once its session is deleted. */
+  sessionId: number | null;
   name: string;
   /** Where the item is kept; players see it even while unidentified. */
   location: string | null;

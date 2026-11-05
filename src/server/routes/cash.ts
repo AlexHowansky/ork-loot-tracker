@@ -1,11 +1,11 @@
 import { and, eq } from "drizzle-orm";
 import type { DbOrTx as Db } from "../db/client.ts";
-import { campaign, campaignGm, cashEntry, session } from "../db/schema.ts";
+import { campaign, campaignGm, cashEntry } from "../db/schema.ts";
 import { requireGm } from "../lib/auth.ts";
 import { badRequest, notFound } from "../lib/errors.ts";
 import { idParam, readJson, uuidParam, type Router } from "../lib/http.ts";
 import { logger } from "../lib/logger.ts";
-import { assertMoneyInRange, ownedCampaign } from "../domain/campaign.ts";
+import { assertMoneyInRange, campaignSession, ownedCampaign } from "../domain/campaign.ts";
 import { formatMoney } from "../../shared/money.ts";
 import { cashEntrySchema, cashEntryUpdateSchema } from "../../shared/schemas.ts";
 
@@ -25,21 +25,6 @@ function ownedEntry(db: Db, gmId: string, entryId: number) {
     );
   }
   return row;
-}
-
-/** The date of a session in this campaign; anything else is a field error. */
-function sessionDate(db: Db, campaignId: string, sessionId: number) {
-  const row = db
-    .select({ date: session.date })
-    .from(session)
-    .where(and(eq(session.id, sessionId), eq(session.campaignId, campaignId)))
-    .get();
-  if (!row) {
-    throw badRequest("That session isn't in this campaign.", {
-      sessionId: "Choose a session from this campaign.",
-    });
-  }
-  return row.date;
 }
 
 /**
@@ -70,7 +55,7 @@ export function cashRoutes(r: Router) {
     const c = ownedCampaign(ctx.db, requireGm(ctx).id, uuidParam(ctx));
     const input = await readJson(ctx, cashEntrySchema);
     const row = ctx.db.transaction((tx) => {
-      const date = sessionDate(tx, c.id, input.sessionId);
+      const { date } = campaignSession(tx, c.id, input.sessionId);
       adjustCash(tx, c.id, input.amount);
       return tx
         .insert(cashEntry)
@@ -96,7 +81,7 @@ export function cashRoutes(r: Router) {
     }
     ctx.db.transaction((tx) => {
       const date =
-        input.sessionId === null ? entry.date : sessionDate(tx, entry.campaignId, input.sessionId);
+        input.sessionId === null ? entry.date : campaignSession(tx, entry.campaignId, input.sessionId).date;
       adjustCash(tx, entry.campaignId, input.amount - entry.amount);
       tx.update(cashEntry).set({ ...input, date }).where(eq(cashEntry.id, entry.id)).run();
     });

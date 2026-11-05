@@ -30,7 +30,7 @@ export function SessionTable({
       message: (
         <p>
           {s.itemCount > 0
-            ? `Its ${s.itemCount} loot ${s.itemCount === 1 ? "item is" : "items are"} deleted too. `
+            ? `Its ${s.itemCount} loot ${s.itemCount === 1 ? "item stays" : "items stay"}, with no session. `
             : ""}
           {entries > 0
             ? `Its ${entries} cash ${entries === 1 ? "entry stays" : "entries stay"} in the ledger. `
@@ -63,7 +63,7 @@ export function SessionTable({
       )}
       {view.sessions.length === 0 ? (
         <p className="py-6 text-center text-base-content/60">
-          No sessions yet.{gm && " Create one to start adding loot."}
+          No sessions yet.
         </p>
       ) : (
         <div>

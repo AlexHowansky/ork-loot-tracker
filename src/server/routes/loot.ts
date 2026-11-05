@@ -1,13 +1,12 @@
 import { and, eq } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { campaign, campaignGm, character, loot, session } from "../db/schema.ts";
+import { campaign, campaignGm, character, loot } from "../db/schema.ts";
 import { requireGm } from "../lib/auth.ts";
 import { badRequest, notFound } from "../lib/errors.ts";
-import { idParam, readJson, type Router } from "../lib/http.ts";
+import { idParam, readJson, uuidParam, type Router } from "../lib/http.ts";
 import { logger } from "../lib/logger.ts";
-import { assertMoneyInRange, lootView } from "../domain/campaign.ts";
+import { assertMoneyInRange, campaignSession, lootView, ownedCampaign } from "../domain/campaign.ts";
 import { assertCanClaim, claimLoot, claimNotice, releaseLoot } from "../domain/loot.ts";
-import { ownedSession } from "./session.ts";
 import { gmClaimSchema, lootSchema, lootUpdateSchema } from "../../shared/schemas.ts";
 import { CHARACTER_STATUSES, type LootStatus } from "../../shared/status.ts";
 
@@ -15,8 +14,7 @@ function ownedLoot(db: Db, gmId: string, lootId: number) {
   const row = db
     .select({ loot, campaignId: campaign.id })
     .from(loot)
-    .innerJoin(session, eq(session.id, loot.sessionId))
-    .innerJoin(campaign, eq(campaign.id, session.campaignId))
+    .innerJoin(campaign, eq(campaign.id, loot.campaignId))
     .innerJoin(campaignGm, and(eq(campaignGm.campaignId, campaign.id), eq(campaignGm.gmId, gmId)))
     .where(eq(loot.id, lootId))
     .get();
@@ -60,20 +58,21 @@ function checkOwner(
 }
 
 export function lootRoutes(r: Router) {
-  r.post("/api/sessions/:id/loot", async (ctx) => {
-    const { session: s } = ownedSession(ctx.db, requireGm(ctx).id, idParam(ctx));
+  r.post("/api/campaigns/:id/loot", async (ctx) => {
+    const c = ownedCampaign(ctx.db, requireGm(ctx).id, uuidParam(ctx));
     const input = await readJson(ctx, lootSchema);
-    const characterId = checkOwner(ctx.db, s.campaignId, input.status, input.characterId);
+    if (input.sessionId !== null) campaignSession(ctx.db, c.id, input.sessionId);
+    const characterId = checkOwner(ctx.db, c.id, input.status, input.characterId);
     const row = ctx.db.transaction((tx) => {
       const row = tx
         .insert(loot)
-        .values({ ...input, characterId, sessionId: s.id })
+        .values({ ...input, characterId, campaignId: c.id })
         .returning()
         .get();
-      assertMoneyInRange(tx, s.campaignId, "value");
+      assertMoneyInRange(tx, c.id, "value");
       return row;
     });
-    ctx.changed(s.campaignId);
+    ctx.changed(c.id);
     logger.info("loot added", { requestId: ctx.requestId, lootId: row.id });
     return lootView(row);
   });
@@ -81,6 +80,7 @@ export function lootRoutes(r: Router) {
   r.patch("/api/loot/:id", async (ctx) => {
     const { loot: item, campaignId } = ownedLoot(ctx.db, requireGm(ctx).id, idParam(ctx));
     const input = await readJson(ctx, lootUpdateSchema);
+    if (input.sessionId != null) campaignSession(ctx.db, campaignId, input.sessionId);
     const status = input.status ?? item.status;
     const characterId = checkOwner(
       ctx.db,

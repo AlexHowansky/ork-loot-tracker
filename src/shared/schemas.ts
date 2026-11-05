@@ -141,6 +141,8 @@ export const sessionSchema = z.object({
 });
 
 const lootFields = z.object({
+  /** Null for loot not yet found in play, e.g. pending items. */
+  sessionId: z.int({ error: "Choose a session." }).nullable(),
   name: name("Name", 200),
   location: optionalText(100),
   description: optionalText(2000),
@@ -164,6 +166,7 @@ const lootFields = z.object({
 });
 
 export const lootSchema = lootFields.extend({
+  sessionId: lootFields.shape.sessionId.default(null),
   quantity: lootFields.shape.quantity.default(1),
   value: lootFields.shape.value.default(null),
   marketPct: lootFields.shape.marketPct.default(50),

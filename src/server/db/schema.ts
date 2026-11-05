@@ -276,9 +276,13 @@ export const loot = sqliteTable(
   "loot",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
-    sessionId: integer("session_id")
+    campaignId: text("campaign_id")
       .notNull()
-      .references(() => session.id, { onDelete: "cascade" }),
+      .references(() => campaign.id, { onDelete: "cascade" }),
+    /** Null until the item turns up in play, or once its session is deleted. */
+    sessionId: integer("session_id").references(() => session.id, {
+      onDelete: "set null",
+    }),
     name: text("name").notNull(),
     /** Where the item is kept, e.g. "Bag of holding". */
     location: text("location"),
@@ -304,6 +308,7 @@ export const loot = sqliteTable(
     updatedAt: updatedAt(),
   },
   (t) => [
+    index("loot_campaign_idx").on(t.campaignId),
     index("loot_session_idx").on(t.sessionId),
     index("loot_character_idx").on(t.characterId),
   ],

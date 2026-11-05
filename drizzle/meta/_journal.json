@@ -43,6 +43,13 @@
       "when": 1793914580846,
       "tag": "0005_cash",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793916865590,
+      "tag": "0006_loot_campaign",
+      "breakpoints": true
     }
   ]
 }

@@ -5,7 +5,6 @@ import {
   character,
   loot,
   cashEntry,
-  session,
   split,
   splitShare,
   type Campaign,
@@ -22,8 +21,7 @@ export function lootInCampaign(db: Db, lootId: number, campaignId: string) {
   const row = db
     .select({ loot })
     .from(loot)
-    .innerJoin(session, eq(session.id, loot.sessionId))
-    .where(and(eq(loot.id, lootId), eq(session.campaignId, campaignId)))
+    .where(and(eq(loot.id, lootId), eq(loot.campaignId, campaignId)))
     .get();
   if (!row) throw notFound("That item");
   return row.loot;
@@ -103,6 +101,7 @@ export function claimLoot(
     return tx
       .insert(loot)
       .values({
+        campaignId: item.campaignId,
         sessionId: item.sessionId,
         name: item.name,
         location: item.location,
@@ -153,7 +152,7 @@ export function releaseLoot(db: Db, who: Character, lootId: number): Loot {
       .where(
         and(
           ne(loot.id, item.id),
-          eq(loot.sessionId, item.sessionId),
+          sameOrNull(loot.sessionId, item.sessionId),
           eq(loot.status, "available"),
           eq(loot.name, item.name),
           eq(loot.marketPct, item.marketPct),

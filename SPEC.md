@@ -273,12 +273,21 @@ they have claimed from the pool.
 
 * The GM can view, create, edit, and delete sessions in their campaigns.
 
-* The GM can view, create, edit, and delete loot in a session. Each loot entry
-  includes session (required), name (required, not unique), location
+* The GM can view, create, edit, and delete loot in their campaigns. Each
+  loot entry includes session (optional, since pending loot hasn't turned up
+  in play yet), name (required, not unique), location
   (optional, up to 100 characters, e.g. "Bag of holding"), description
   (optional), link (optional, http or https only), quantity (required,
   default 1), value (optional), market percentage (default 50% because we
   only get half value when we sell) and status.
+
+* The loot form's session defaults to the session the loot table is
+  filtered to, then the latest session, and offers "No session". Editing an
+  item can move it to another session or take it off one. Adding loot
+  doesn't need a session to exist.
+
+* Deleting a session keeps its loot: each item stays with no session (the
+  confirmation says so), and can be given another session by editing it.
 
 * The loot form puts location to the right of name. "Save and add another"
   keeps the location, since a haul is often stowed in one place.
@@ -340,21 +349,22 @@ they have claimed from the pool.
   Players see a plain pill that can't be clicked.
 
 * When the loot table shows all sessions, a "Session" column after "Claim"
-  shows the session's date. Hovering over the date shows that session's title
-  and notes.
+  shows the session's date, or a dash for an item with no session. Hovering
+  over the date shows that session's title and notes.
 
 * The loot table is sorted by item name, A to Z, until another column is
   chosen. Clicking any column header but the actions sorts the table by
   it, ascending; clicking it again reverses the order. An arrow marks the
   sorted column and its direction. Status sorts as pending, available,
   party, claimed, bought, sold, abandoned, and Session by the session's
-  date.
+  date (no session counts as blank).
   Blank cells (no location, value or claimant, or a value hidden from players
   because the item is unidentified) sort last either way. Ties fall back
   to the item name. The choice lasts while the campaign page is open,
   across tab changes.
 
-* The loot table filters by session and by status: "Pool" (available, party
+* The loot table filters by session ("All sessions", "No session" or one
+  session) and by status: "Pool" (available, party
   and claimed), "Available" (not yet claimed), "Pending" (for the GM only),
   "Gone" (sold, bought and abandoned) and "All".
 
@@ -415,7 +425,8 @@ they have claimed from the pool.
   appropriate.
 
 * Players can release their own claims back to the pool. A released part of
-  a stack merges back into the matching available row from the same session.
+  a stack merges back into the matching available row from the same session
+  (or with no session, as the claim had).
   A split stack's parts keep its location; a part since moved elsewhere
   doesn't match, and comes back as a row of its own.
 

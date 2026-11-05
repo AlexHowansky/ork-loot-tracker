@@ -106,13 +106,29 @@ export function campaignGms(db: Db, campaignId: string, gmId: string): GmView[] 
     .map((g) => ({ ...g, you: g.id === gmId }));
 }
 
+/** A session in this campaign; anything else is a field error. */
+export function campaignSession(db: Db, campaignId: string, sessionId: number) {
+  const row = db
+    .select()
+    .from(session)
+    .where(and(eq(session.id, sessionId), eq(session.campaignId, campaignId)))
+    .get();
+  if (!row) {
+    throw badRequest("That session isn't in this campaign.", {
+      sessionId: "Choose a session from this campaign.",
+    });
+  }
+  return row;
+}
+
+/** A campaign's loot, latest session first; loot with no session last. */
 export function campaignLoot(db: Db, campaignId: string): Loot[] {
   return db
     .select({ loot })
     .from(loot)
-    .innerJoin(session, eq(session.id, loot.sessionId))
-    .where(eq(session.campaignId, campaignId))
-    .orderBy(desc(session.date), asc(loot.id))
+    .leftJoin(session, eq(session.id, loot.sessionId))
+    .where(eq(loot.campaignId, campaignId))
+    .orderBy(sql`${session.date} IS NULL`, desc(session.date), asc(loot.id))
     .all()
     .map((r) => r.loot);
 }
@@ -250,7 +266,9 @@ export function campaignView(
   // Pending items haven't been found yet, so only the GM knows of them.
   const shown = opts.forGm ? rows : rows.filter((r) => !HIDDEN_STATUSES.includes(r.status));
   const counts = new Map<number, number>();
-  for (const r of shown) counts.set(r.sessionId, (counts.get(r.sessionId) ?? 0) + 1);
+  for (const r of shown) {
+    if (r.sessionId !== null) counts.set(r.sessionId, (counts.get(r.sessionId) ?? 0) + 1);
+  }
 
   return {
     campaign: campaignInfo(c),
