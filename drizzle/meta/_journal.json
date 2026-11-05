@@ -29,6 +29,13 @@
       "when": 1793823859744,
       "tag": "0003_public_campaign",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1793908007068,
+      "tag": "0004_campaign_gm",
+      "breakpoints": true
     }
   ]
 }

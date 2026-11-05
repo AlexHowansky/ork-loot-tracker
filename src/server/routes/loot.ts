@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { campaign, character, loot, session } from "../db/schema.ts";
+import { campaign, campaignGm, character, loot, session } from "../db/schema.ts";
 import { requireGm } from "../lib/auth.ts";
 import { badRequest, notFound } from "../lib/errors.ts";
 import { idParam, readJson, type Router } from "../lib/http.ts";
@@ -17,7 +17,8 @@ function ownedLoot(db: Db, gmId: string, lootId: number) {
     .from(loot)
     .innerJoin(session, eq(session.id, loot.sessionId))
     .innerJoin(campaign, eq(campaign.id, session.campaignId))
-    .where(and(eq(loot.id, lootId), eq(campaign.gmId, gmId)))
+    .innerJoin(campaignGm, and(eq(campaignGm.campaignId, campaign.id), eq(campaignGm.gmId, gmId)))
+    .where(eq(loot.id, lootId))
     .get();
   if (!row) throw notFound("That item");
   return row;

@@ -1,6 +1,6 @@
 import { and, eq, ne, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { campaign, observer } from "../db/schema.ts";
+import { campaign, campaignGm, observer } from "../db/schema.ts";
 import { issueJoinCode, requireGm } from "../lib/auth.ts";
 import { badRequest, conflict, notFound } from "../lib/errors.ts";
 import { readJson, uuidParam, type Router } from "../lib/http.ts";
@@ -14,7 +14,8 @@ function ownedObserver(db: Db, gmId: string, observerId: string) {
     .select({ observer })
     .from(observer)
     .innerJoin(campaign, eq(campaign.id, observer.campaignId))
-    .where(and(eq(observer.id, observerId), eq(campaign.gmId, gmId)))
+    .innerJoin(campaignGm, and(eq(campaignGm.campaignId, campaign.id), eq(campaignGm.gmId, gmId)))
+    .where(eq(observer.id, observerId))
     .get();
   if (!row) throw notFound("That observer");
   return row.observer;

@@ -12,11 +12,20 @@ import { PlayCampaign } from "./PlayPage.tsx";
 import { WatchCampaign } from "./WatchPage.tsx";
 import { Menu } from "../components/Menu.tsx";
 import { SplitModal } from "../components/SplitModal.tsx";
+import { GmsModal } from "../components/GmsModal.tsx";
 import { LoadError, Loading } from "../components/Layout.tsx";
 import { useConfirm } from "../components/Confirm.tsx";
 import { useToast } from "../components/Toast.tsx";
 import { formatMoney } from "../../shared/money.ts";
-import { Icon, faChevronDown, faPen, faScaleBalanced, faTrash, faImage } from "../components/Icon.tsx";
+import {
+  Icon,
+  faChevronDown,
+  faPen,
+  faScaleBalanced,
+  faTrash,
+  faImage,
+  faUserShield,
+} from "../components/Icon.tsx";
 
 /**
  * A campaign's one address, for everyone: its GM gets the GM's board, and
@@ -121,12 +130,27 @@ function GmCampaign({ id }: { id: string }) {
   const { data: view, error, isPending } = useCampaign(id);
   const [editing, setEditing] = useState(false);
   const [splitting, setSplitting] = useState(false);
+  const [managingGms, setManagingGms] = useState(false);
   const refresh = useRefresh();
   const ask = useConfirm();
   const toast = useToast();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  useLiveUpdates(`/api/campaigns/${id}/events`, [keys.campaign(id), splitPreviewKey(id)]);
+  // Set once this GM has left, so the stream ending doesn't say so twice.
+  const left = useRef(false);
+
+  /** Back to the campaign list, once this GM no longer runs the campaign. */
+  async function lostAccess(message: string) {
+    qc.removeQueries({ queryKey: keys.campaign(id) });
+    await qc.invalidateQueries({ queryKey: keys.campaigns });
+    navigate("/");
+    toast(message, "info");
+  }
+
+  useLiveUpdates(`/api/campaigns/${id}/events`, [keys.campaign(id), splitPreviewKey(id)], () => {
+    if (left.current) return;
+    void lostAccess(`Another GM removed you from ${view?.campaign.name ?? "the campaign"}.`);
+  });
 
   if (isPending) return <Loading />;
   if (error) return <LoadError error={error} />;
@@ -193,6 +217,11 @@ function GmCampaign({ id }: { id: string }) {
                   <Icon icon={faPen} /> Edit campaign
                 </button>
               </li>
+              <li>
+                <button type="button" onClick={() => setManagingGms(true)}>
+                  <Icon icon={faUserShield} /> GMs
+                </button>
+              </li>
               {campaign.backgroundImage && (
                 <li>
                   <button type="button" onClick={removeImage}>
@@ -220,6 +249,18 @@ function GmCampaign({ id }: { id: string }) {
           onSaved={() => {
             setEditing(false);
             refresh();
+          }}
+        />
+      )}
+      {managingGms && (
+        <GmsModal
+          view={view}
+          onClose={() => setManagingGms(false)}
+          onChanged={refresh}
+          onLeaving={(leaving) => (left.current = leaving)}
+          onLeft={() => {
+            setManagingGms(false);
+            void lostAccess(`You left ${campaign.name}.`);
           }}
         />
       )}

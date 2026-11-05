@@ -1,6 +1,6 @@
 import { and, eq, ne, sql } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { campaign, character, loot, splitShare } from "../db/schema.ts";
+import { campaign, campaignGm, character, loot, splitShare } from "../db/schema.ts";
 import { issueJoinCode, requireGm } from "../lib/auth.ts";
 import { conflict, notFound } from "../lib/errors.ts";
 import { readJson, uuidParam, type Router } from "../lib/http.ts";
@@ -15,7 +15,8 @@ export function ownedCharacter(db: Db, gmId: string, characterId: string) {
     .select({ character })
     .from(character)
     .innerJoin(campaign, eq(campaign.id, character.campaignId))
-    .where(and(eq(character.id, characterId), eq(campaign.gmId, gmId)))
+    .innerJoin(campaignGm, and(eq(campaignGm.campaignId, campaign.id), eq(campaignGm.gmId, gmId)))
+    .where(eq(character.id, characterId))
     .get();
   if (!row) throw notFound("That character");
   return row.character;

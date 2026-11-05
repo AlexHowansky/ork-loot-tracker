@@ -361,6 +361,96 @@ describe("campaign access", () => {
   });
 });
 
+describe("co-GMs", () => {
+  async function bob() {
+    const gmB = new Client(ctx.app, "10.0.0.2");
+    await gmB.login("bob@example.com");
+    return gmB;
+  }
+
+  test("a campaign starts with its creator as its only GM", async () => {
+    const { view } = await seed();
+    const gms = (await view()).gms!;
+    expect(gms.map((g) => [g.email, g.you])).toEqual([["alice@example.com", true]]);
+  });
+
+  test("an added GM can run the campaign as fully as its creator", async () => {
+    const { campaignId, characterIds, sessionId } = await seed();
+    const gmB = await bob();
+    const res = await gmA.post(`/api/campaigns/${campaignId}/gms`, { email: " Bob@Example.com " });
+    expect(res.status).toBe(200);
+    expect(res.body.map((g: any) => g.email)).toEqual(["alice@example.com", "bob@example.com"]);
+
+    expect((await gmB.get("/api/campaigns")).body.map((c: any) => c.id)).toEqual([campaignId]);
+    const seen = await gmB.get<CampaignView>(`/api/campaigns/${campaignId}`);
+    expect(seen.status).toBe(200);
+    expect(seen.body.gms!.find((g) => g.you)!.email).toBe("bob@example.com");
+    expect((await gmB.patch(`/api/campaigns/${campaignId}`, campaignBody)).status).toBe(200);
+    expect((await gmB.post(`/api/characters/${characterIds[0]}/code`)).status).toBe(200);
+    const loot = await gmB.post(`/api/sessions/${sessionId}/loot`, { name: "Gem", value: 100 });
+    expect(loot.status).toBe(200);
+    expect((await gmB.del(`/api/loot/${loot.body.id}`)).status).toBe(200);
+    expect((await gmB.post(`/api/campaigns/${campaignId}/observers`, { name: "Kim" })).status).toBe(200);
+    expect((await gmB.post(`/api/campaigns/${campaignId}/sessions`, { date: "2026-02-01" })).status).toBe(200);
+  });
+
+  test("only existing GMs can be added, and only once", async () => {
+    const { campaignId } = await seed();
+    const unknown = await gmA.post(`/api/campaigns/${campaignId}/gms`, { email: "carol@example.com" });
+    expect(unknown.status).toBe(400);
+    expect(unknown.body.fields.email).toBe("No GM has that email address.");
+    expect((await gmA.post(`/api/campaigns/${campaignId}/gms`, { email: "nope" })).status).toBe(400);
+    expect((await gmA.post(`/api/campaigns/${campaignId}/gms`, { email: "alice@example.com" })).status).toBe(409);
+    expect((await gmA.post(`/api/campaigns/${campaignId}/gms`, { email: "bob@example.com" })).status).toBe(200);
+    expect((await gmA.post(`/api/campaigns/${campaignId}/gms`, { email: "bob@example.com" })).status).toBe(409);
+  });
+
+  test("a GM who doesn't run the campaign can't add or remove its GMs", async () => {
+    const { campaignId } = await seed();
+    const gmB = await bob();
+    expect((await gmB.post(`/api/campaigns/${campaignId}/gms`, { email: "bob@example.com" })).status).toBe(404);
+    const aliceId = (await gmA.get("/api/auth/me")).body.gm.id;
+    expect((await gmB.del(`/api/campaigns/${campaignId}/gms/${aliceId}`)).status).toBe(404);
+  });
+
+  test("the last GM can't be removed", async () => {
+    const { campaignId } = await seed();
+    const aliceId = (await gmA.get("/api/auth/me")).body.gm.id;
+    const res = await gmA.del(`/api/campaigns/${campaignId}/gms/${aliceId}`);
+    expect(res.status).toBe(409);
+    expect(res.body.error ?? res.body.message).toContain("at least one GM");
+  });
+
+  test("any GM can remove another, or leave, and loses access at once", async () => {
+    const { campaignId, sessionId } = await seed();
+    const gmB = await bob();
+    await gmA.post(`/api/campaigns/${campaignId}/gms`, { email: "bob@example.com" });
+    const aliceId = (await gmA.get("/api/auth/me")).body.gm.id;
+    const bobId = (await gmB.get("/api/auth/me")).body.gm.id;
+
+    // Bob removes Alice, the campaign's creator.
+    expect((await gmB.del(`/api/campaigns/${campaignId}/gms/${aliceId}`)).status).toBe(200);
+    expect((await gmA.get(`/api/campaigns/${campaignId}`)).status).toBe(404);
+    expect((await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "x" })).status).toBe(404);
+    expect((await gmA.get("/api/campaigns")).body).toEqual([]);
+    expect((await gmB.del(`/api/campaigns/${campaignId}/gms/${aliceId}`)).status).toBe(404);
+
+    // Alice is added back, and Bob leaves.
+    await gmB.post(`/api/campaigns/${campaignId}/gms`, { email: "alice@example.com" });
+    expect((await gmB.del(`/api/campaigns/${campaignId}/gms/${bobId}`)).status).toBe(200);
+    expect((await gmB.get(`/api/campaigns/${campaignId}`)).status).toBe(404);
+    expect((await gmA.get(`/api/campaigns/${campaignId}`)).status).toBe(200);
+  });
+
+  test("any GM can delete the campaign", async () => {
+    const { campaignId } = await seed();
+    const gmB = await bob();
+    await gmA.post(`/api/campaigns/${campaignId}/gms`, { email: "bob@example.com" });
+    expect((await gmB.del(`/api/campaigns/${campaignId}`)).status).toBe(200);
+    expect((await gmA.get(`/api/campaigns/${campaignId}`)).status).toBe(404);
+  });
+});
+
 describe("join codes", () => {
   test("join links use the campaign's address from APP_URL, for the GM only", async () => {
     const { campaignId, view } = await seed();
@@ -1670,6 +1760,30 @@ describe("live updates", () => {
     expect(ctx.app.events.count(bobs.id)).toBe(1);
     playerStream.close();
     bobStream.close();
+  });
+
+  test("a removed GM's stream on that campaign is revoked; a co-GM hears changes", async () => {
+    const { campaignId, sessionId } = await seed();
+    const gmB = new Client(ctx.app, "10.0.0.2");
+    await gmB.login("bob@example.com");
+    await gmA.post(`/api/campaigns/${campaignId}/gms`, { email: "bob@example.com" });
+    const bobs = (await gmB.post("/api/campaigns", campaignBody)).body;
+    const aliceStream = await openStream(gmA, `/api/campaigns/${campaignId}/events`);
+    const bobStream = await openStream(gmB, `/api/campaigns/${campaignId}/events`);
+    const bobOwn = await openStream(gmB, `/api/campaigns/${bobs.id}/events`);
+
+    await gmA.post(`/api/sessions/${sessionId}/loot`, { name: "Gem" });
+    expect(await bobStream.next()).toBeNull();
+
+    const bobId = (await gmB.get("/api/auth/me")).body.gm.id;
+    expect((await gmA.del(`/api/campaigns/${campaignId}/gms/${bobId}`)).status).toBe(200);
+    const rest = await bobStream.rest();
+    expect(rest).toContain("event: revoked");
+    expect(rest).not.toContain("event: signedout");
+    expect(ctx.app.events.count(campaignId)).toBe(1);
+    expect(ctx.app.events.count(bobs.id)).toBe(1);
+    aliceStream.close();
+    bobOwn.close();
   });
 
   test("streams need access to the campaign", async () => {

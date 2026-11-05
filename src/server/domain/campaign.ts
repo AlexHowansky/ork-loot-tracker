@@ -2,7 +2,9 @@ import { and, asc, desc, eq, getTableColumns, inArray, sql } from "drizzle-orm";
 import type { DbOrTx as Db } from "../db/client.ts";
 import {
   campaign,
+  campaignGm,
   character,
+  gm,
   joinCode,
   loot,
   observer,
@@ -16,6 +18,7 @@ import {
 import { formatMoney, MAX_MONEY, subtotal } from "../../shared/money.ts";
 import type {
   CampaignInfo,
+  GmView,
   CampaignSummary,
   CampaignView,
   LootView,
@@ -75,15 +78,32 @@ export function lootView(row: Loot, forGm = true): LootView {
   };
 }
 
-/** The campaign with this id if `gmId` owns it; otherwise a 404. */
+/** Joins a campaign to `gmId`'s place among its GMs, if they have one. */
+const runBy = (gmId: string) =>
+  and(eq(campaignGm.campaignId, campaign.id), eq(campaignGm.gmId, gmId));
+
+/** The campaign with this id if `gmId` is one of its GMs; otherwise a 404. */
 export function ownedCampaign(db: Db, gmId: string, campaignId: string) {
   const row = db
-    .select()
+    .select({ campaign })
     .from(campaign)
-    .where(and(eq(campaign.id, campaignId), eq(campaign.gmId, gmId)))
+    .innerJoin(campaignGm, runBy(gmId))
+    .where(eq(campaign.id, campaignId))
     .get();
   if (!row) throw notFound("That campaign");
-  return row;
+  return row.campaign;
+}
+
+/** A campaign's GMs, earliest added first, with `gmId` marked as "you". */
+export function campaignGms(db: Db, campaignId: string, gmId: string): GmView[] {
+  return db
+    .select({ id: gm.id, email: gm.email })
+    .from(campaignGm)
+    .innerJoin(gm, eq(gm.id, campaignGm.gmId))
+    .where(eq(campaignGm.campaignId, campaignId))
+    .orderBy(asc(campaignGm.createdAt), asc(gm.email))
+    .all()
+    .map((g) => ({ ...g, you: g.id === gmId }));
 }
 
 export function campaignLoot(db: Db, campaignId: string): Loot[] {
@@ -172,11 +192,12 @@ export function assertMoneyInRange(db: Db, campaignId: string, field: string): v
 
 export function listCampaigns(db: Db, gmId: string): CampaignSummary[] {
   const rows = db
-    .select()
+    .select({ campaign })
     .from(campaign)
-    .where(eq(campaign.gmId, gmId))
+    .innerJoin(campaignGm, runBy(gmId))
     .orderBy(desc(campaign.startDate), asc(campaign.name))
-    .all();
+    .all()
+    .map((r) => r.campaign);
   return rows.map((c) => {
     const chars = db
       .select({ id: character.id, shares: character.shares })

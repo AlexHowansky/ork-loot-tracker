@@ -74,6 +74,10 @@ function promptHidden(question: string): Promise<string> {
 }
 
 async function askPassword(): Promise<string> {
+  // Bun loads .env on its own, so say where the password came from.
+  if (process.env.GM_PASSWORD !== undefined) {
+    console.log("Using the password from GM_PASSWORD.");
+  }
   const pw = process.env.GM_PASSWORD ?? (await promptHidden("Password: "));
   const parsed = newPasswordSchema.safeParse(pw);
   if (!parsed.success) fail(parsed.error.issues[0]!.message);

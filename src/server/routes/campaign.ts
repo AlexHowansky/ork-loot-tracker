@@ -1,14 +1,16 @@
 import { and, eq, gt, sql } from "drizzle-orm";
 import {
   campaign,
+  campaignGm,
   character,
+  gm as gmTable,
   loot,
   observer,
   pettyCashEntry,
   session,
 } from "../db/schema.ts";
 import { requireGm } from "../lib/auth.ts";
-import { badRequest } from "../lib/errors.ts";
+import { badRequest, conflict, notFound } from "../lib/errors.ts";
 import { idParam, readJson, uuidParam, type Router } from "../lib/http.ts";
 import { sseResponse } from "../lib/events.ts";
 import { logger } from "../lib/logger.ts";
@@ -16,13 +18,14 @@ import { RateLimiter } from "../lib/rate-limit.ts";
 import { searchReference } from "../lib/reference-search.ts";
 import { removeImage, saveImage } from "../lib/upload.ts";
 import {
+  campaignGms,
   campaignInfo,
   campaignView,
   listCampaigns,
   ownedCampaign,
 } from "../domain/campaign.ts";
 import { previewSplit, runSplit, undoSplit } from "../domain/loot.ts";
-import { campaignSchema } from "../../shared/schemas.ts";
+import { addGmSchema, campaignSchema } from "../../shared/schemas.ts";
 
 /**
  * A campaign's one address: its GM's board, where anyone else may read it,
@@ -33,30 +36,100 @@ export const campaignUrl = (appUrl: string, id: string) => `${appUrl}/campaigns/
 
 export function campaignRoutes(r: Router) {
   const referenceLimiter = new RateLimiter(60, 60_000);
+  // Each lookup says whether an address belongs to a GM, so keep it slow.
+  const addGmLimiter = new RateLimiter(20, 15 * 60_000);
 
   r.get("/api/campaigns", (ctx) => listCampaigns(ctx.db, requireGm(ctx).id));
 
   r.post("/api/campaigns", async (ctx) => {
     const gm = requireGm(ctx);
     const input = await readJson(ctx, campaignSchema);
-    const row = ctx.db
-      .insert(campaign)
-      .values({ ...input, gmId: gm.id })
-      .returning()
-      .get();
+    const row = ctx.db.transaction((tx) => {
+      const row = tx.insert(campaign).values(input).returning().get();
+      tx.insert(campaignGm).values({ campaignId: row.id, gmId: gm.id }).run();
+      return row;
+    });
     logger.info("campaign created", { requestId: ctx.requestId, campaignId: row.id });
     return campaignInfo(row);
   });
 
   r.get("/api/campaigns/:id", (ctx) => {
-    const c = ownedCampaign(ctx.db, requireGm(ctx).id, uuidParam(ctx));
+    const gm = requireGm(ctx);
+    const c = ownedCampaign(ctx.db, gm.id, uuidParam(ctx));
     return {
       ...campaignView(ctx.db, c, {
         forGm: true,
         isOnline: (ch) => ctx.events.isOnline(ch.id, ch.playerId),
       }),
+      gms: campaignGms(ctx.db, c.id, gm.id),
       campaignUrl: campaignUrl(ctx.config.appUrl, c.id),
     };
+  });
+
+  r.post("/api/campaigns/:id/gms", async (ctx) => {
+    const gm = requireGm(ctx);
+    const c = ownedCampaign(ctx.db, gm.id, uuidParam(ctx));
+    const { email } = await readJson(ctx, addGmSchema);
+    addGmLimiter.hit(gm.id);
+    const other = ctx.db
+      .select({ id: gmTable.id })
+      .from(gmTable)
+      .where(eq(gmTable.email, email))
+      .get();
+    if (!other) {
+      throw badRequest("No GM has that email address.", {
+        email: "No GM has that email address.",
+      });
+    }
+    const added = ctx.db
+      .insert(campaignGm)
+      .values({ campaignId: c.id, gmId: other.id })
+      .onConflictDoNothing()
+      .returning()
+      .get();
+    if (!added) throw conflict("That GM already runs this campaign.");
+    ctx.changed(c.id);
+    logger.info("campaign gm added", {
+      requestId: ctx.requestId,
+      campaignId: c.id,
+      gmId: other.id,
+      by: gm.id,
+    });
+    return campaignGms(ctx.db, c.id, gm.id);
+  });
+
+  r.delete("/api/campaigns/:id/gms/:gmId", (ctx) => {
+    const gm = requireGm(ctx);
+    const c = ownedCampaign(ctx.db, gm.id, uuidParam(ctx));
+    const gmId = uuidParam(ctx, "gmId");
+    ctx.db.transaction((tx) => {
+      const gms = tx
+        .select({ gmId: campaignGm.gmId })
+        .from(campaignGm)
+        .where(eq(campaignGm.campaignId, c.id))
+        .all();
+      if (!gms.some((g) => g.gmId === gmId)) throw notFound("That GM");
+      if (gms.length === 1) {
+        throw conflict(
+          "A campaign needs at least one GM. Delete the campaign instead if " +
+            "no one should run it.",
+        );
+      }
+      tx.delete(campaignGm)
+        .where(and(eq(campaignGm.campaignId, c.id), eq(campaignGm.gmId, gmId)))
+        .run();
+    });
+    // Their open pages for this campaign go back to their campaign list.
+    const streams = ctx.events.revokeGm(c.id, gmId);
+    ctx.changed(c.id);
+    logger.info("campaign gm removed", {
+      requestId: ctx.requestId,
+      campaignId: c.id,
+      gmId,
+      by: gm.id,
+      streams,
+    });
+    return { ok: true };
   });
 
   r.get("/api/campaigns/:id/events", (ctx) => {

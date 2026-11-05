@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { DbOrTx as Db } from "../db/client.ts";
-import { campaign, pettyCashEntry, session } from "../db/schema.ts";
+import { campaign, campaignGm, pettyCashEntry, session } from "../db/schema.ts";
 import { requireGm } from "../lib/auth.ts";
 import { badRequest, notFound } from "../lib/errors.ts";
 import { idParam, readJson, uuidParam, type Router } from "../lib/http.ts";
@@ -15,7 +15,8 @@ function ownedEntry(db: Db, gmId: string, entryId: number) {
     .select({ entry: pettyCashEntry, campaign })
     .from(pettyCashEntry)
     .innerJoin(campaign, eq(campaign.id, pettyCashEntry.campaignId))
-    .where(and(eq(pettyCashEntry.id, entryId), eq(campaign.gmId, gmId)))
+    .innerJoin(campaignGm, and(eq(campaignGm.campaignId, campaign.id), eq(campaignGm.gmId, gmId)))
+    .where(eq(pettyCashEntry.id, entryId))
     .get();
   if (!row) throw notFound("That petty cash entry");
   if (row.entry.splitId !== null) {

@@ -19,10 +19,16 @@ export function SubmitButton({
   );
 }
 
-export function CancelButton({ onClick }: { onClick: () => void }) {
+export function CancelButton({
+  onClick,
+  children = "Cancel",
+}: {
+  onClick: () => void;
+  children?: ReactNode;
+}) {
   return (
     <button type="button" className="btn" onClick={onClick}>
-      Cancel
+      {children}
     </button>
   );
 }

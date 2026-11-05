@@ -70,6 +70,12 @@ export const newPasswordSchema = z
 
 export const forgotSchema = z.object({ email: emailSchema });
 
+/** Another GM's address, to add them to a campaign. */
+export const addGmSchema = z.object({
+  email: emailSchema.pipe(z.string().max(254, { error: "That address is too long." })),
+});
+export type AddGmInput = z.infer<typeof addGmSchema>;
+
 export const resetSchema = z.object({
   token: z.string().min(1).max(100),
   password: newPasswordSchema,

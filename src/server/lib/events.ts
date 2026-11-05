@@ -18,8 +18,11 @@ interface Subscriber {
   seatId?: string;
   /** Opened by anyone, without signing in, while the campaign is public. */
   anonymous?: boolean;
-  /** Ends the stream, saying why, when its GM or player is signed out. */
-  end?: () => void;
+  /**
+   * Ends the stream, saying why, when its GM or player is signed out.
+   * `event` overrides the usual reason sent to the page.
+   */
+  end?: (event?: string) => void;
 }
 
 /**
@@ -53,12 +56,12 @@ export function createEventBus() {
     }
   }
 
-  function endWhere(match: (s: Subscriber) => boolean): number {
-    const ending: (() => void)[] = [];
+  function endWhere(match: (s: Subscriber) => boolean, event?: string): number {
+    const ending: ((event?: string) => void)[] = [];
     for (const set of listeners.values()) {
       for (const s of set) if (match(s) && s.end) ending.push(s.end);
     }
-    for (const end of ending) end();
+    for (const end of ending) end(event);
     return ending.length;
   }
 
@@ -71,7 +74,7 @@ export function createEventBus() {
         gmId?: string;
         seatId?: string;
         anonymous?: boolean;
-        end?: () => void;
+        end?: (event?: string) => void;
       } = {},
     ): () => void {
       let set = listeners.get(campaignId);
@@ -97,6 +100,20 @@ export function createEventBus() {
      */
     signOut(gmId: string): number {
       return endWhere((s) => s.gmId === gmId);
+    },
+    /**
+     * Ends a GM's streams on one campaign with "revoked", for when they
+     * are removed from it.
+     */
+    revokeGm(campaignId: string, gmId: string): number {
+      let n = 0;
+      for (const s of [...(listeners.get(campaignId) ?? [])]) {
+        if (s.gmId === gmId && s.end) {
+          s.end("revoked");
+          n++;
+        }
+      }
+      return n;
     },
     /**
      * Ends every player stream on a seat, for when its player loses it to
@@ -168,7 +185,8 @@ const PING_MS = 25_000;
  * does. It carries no campaign data: each browser refetches its own view,
  * so nothing reaches a player that their normal view wouldn't show. The
  * only extra is a short notice of claims and releases, for a toast. A
- * GM's stream ends with "signedout" when their logins are all ended, a
+ * GM's stream ends with "signedout" when their logins are all ended (or
+ * "revoked" when they're removed from the campaign), a
  * player's with "revoked" when their seat gets a new join code, and an
  * anonymous one with "revoked" when the campaign stops being public.
  */
@@ -203,9 +221,10 @@ export function sseResponse(
             : "anonymous" in opts
               ? { anonymous: true }
               : { seatId: opts.presence.seatId }),
-          end: () => {
+          end: (event) => {
             // Tells the page why, before the browser tries to reconnect.
-            send(`event: ${opts.gm ? "signedout" : "revoked"}\ndata: {}\n\n`);
+            const why = event ?? (opts.gm ? "signedout" : "revoked");
+            send(`event: ${why}\ndata: {}\n\n`);
             cleanup();
           },
         },

@@ -3,6 +3,7 @@ import {
   check,
   index,
   integer,
+  primaryKey,
   sqliteTable,
   text,
   uniqueIndex,
@@ -68,9 +69,6 @@ export const campaign = sqliteTable(
   "campaign",
   {
     id: uuid(),
-    gmId: text("gm_id")
-      .notNull()
-      .references(() => gm.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     startDate: text("start_date").notNull(),
     backgroundImage: text("background_image"),
@@ -97,7 +95,24 @@ export const campaign = sqliteTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [index("campaign_gm_idx").on(t.gmId)],
+);
+
+/** The GMs who run a campaign. All are equals; there is always at least one. */
+export const campaignGm = sqliteTable(
+  "campaign_gm",
+  {
+    campaignId: text("campaign_id")
+      .notNull()
+      .references(() => campaign.id, { onDelete: "cascade" }),
+    gmId: text("gm_id")
+      .notNull()
+      .references(() => gm.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.campaignId, t.gmId] }),
+    index("campaign_gm_gm_idx").on(t.gmId),
+  ],
 );
 
 export const character = sqliteTable(

@@ -31,8 +31,10 @@ can follow it.
 
 ### Campaign
 
-A campaign belongs to one GM and has zero or more sessions. Campaigns have
-names, start dates, optional background images, and zero or more characters.
+A campaign is run by one or more GMs and has zero or more sessions.
+Campaigns have names, start dates, optional background images, and zero or
+more characters. A campaign's GMs are all equals: wherever this document
+says "the GM" of a campaign, any of its GMs may do it.
 
 ### Petty Cash
 
@@ -87,7 +89,22 @@ they have claimed from the pool.
   signs them in. Pages they still have open in other browsers go back to
   the start at once, saying why.
 
-* GMs can view, create, edit, and delete their own campaigns.
+* GMs can view, create, edit, and delete their own campaigns. A GM's own
+  campaigns are those they run: the ones they created and the ones another
+  GM added them to.
+
+* The campaign menu's "GMs" item opens a dialog listing the campaign's GMs
+  by email address, marking the viewer with "you". Any of its GMs can add
+  another GM by the email address they sign in with; it must belong to an
+  existing GM account (accounts still come only from the CLI), and the
+  dialog says so if it doesn't. Any of its GMs can remove another, or
+  leave the campaign themselves, after confirming ("Remove GM" or "Leave
+  campaign"). A campaign always keeps at least one GM: the last can't be
+  removed, and deletes the campaign instead if no one should run it. A
+  removed GM loses access at once; a page they have open on that campaign
+  goes back to their campaign list, saying why. Adding GMs is rate limited
+  per GM, since each attempt reveals whether an address has an account.
+  Players never see who the GMs are: toasts still say "The GM".
 
 * Each campaign sets its currency: a label (e.g. "gp") and 0 to 3 decimal
   places. The decimal places are locked once the campaign has any loot or

@@ -177,6 +177,14 @@ export interface PettyCashEntryView {
   splitId: number | null;
 }
 
+/** One of a campaign's GMs, as the others see them. */
+export interface GmView {
+  id: string;
+  email: string;
+  /** The GM looking at the list. */
+  you: boolean;
+}
+
 export interface CampaignView {
   campaign: CampaignInfo;
   characters: CharacterView[];
@@ -188,6 +196,8 @@ export interface CampaignView {
   pettyCash: PettyCashEntryView[];
   /** GM only: the campaign's observers. */
   observers?: ObserverView[];
+  /** GM only: everyone who runs the campaign. */
+  gms?: GmView[];
   /**
    * GM only: the campaign's address, from APP_URL, where anyone may read
    * it while it's public. A join code goes after it in the fragment to

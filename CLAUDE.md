@@ -28,7 +28,9 @@ The product specification (terms and features) is in @SPEC.md.
   a GM's logins (a password reset) also calls `events.signOut(gmId)`,
   which sends their streams "signedout" and closes them; a new join code
   (or deleting an observer) calls `events.revoke(seatId)`, which does the
-  same to that seat's player streams with "revoked". Anyone may open a
+  same to that seat's player streams with "revoked". Removing a GM from a
+  campaign calls `events.revokeGm(campaignId, gmId)`, ending that GM's
+  streams on it with "revoked". Anyone may open a
   public campaign's stream without signing in; it counts toward no seat,
   and making the campaign private calls `events.closePublic(campaignId)`,
   which sends those streams "revoked" too. The bus is
@@ -51,7 +53,9 @@ The product specification (terms and features) is in @SPEC.md.
 
 * Use a SQL abstraction layer for local storage. For now, we'll use SQLite in
   test and prod, but we might switch to another database later. Migrations
-  live in `drizzle/` and are applied on startup.
+  live in `drizzle/` and are applied on startup, with foreign keys off
+  (so a table rebuild doesn't cascade) and checked before they're turned
+  back on.
 
 * Money is stored as integers in the campaign's minor unit, never as floats.
 
@@ -65,6 +69,10 @@ The product specification (terms and features) is in @SPEC.md.
   Other tables keep integer ids; they're only reached through an owned
   campaign. The exception is `join_code`, keyed by the code itself, so the
   database keeps codes unique across characters and observers alike.
+
+* A campaign is owned by every GM listed for it in `campaign_gm` (all
+  equals, never fewer than one). GM-side lookups join through it, as
+  `ownedCampaign` in `src/server/domain/campaign.ts` does.
 
 * Database tables should be named according to the singular form of a word, so
   prefer `user` over `users`.

@@ -90,7 +90,8 @@ a client could connect directly and forge its own `X-Forwarded-For`.
 | `bun run db:generate`           | Generate a migration after a schema change |
 
 The `gm` commands prompt for a password. Set `GM_PASSWORD` to supply it
-without a prompt.
+without a prompt; they say so when they use it. Bun loads `.env` on its
+own, so a `GM_PASSWORD` there applies to every `gm` command.
 
 ## Configuration
 

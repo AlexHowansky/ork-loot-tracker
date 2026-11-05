@@ -19,10 +19,19 @@ export function openDb(
 ): Db {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   const sqlite = new Database(path, { create: true, strict: true });
-  sqlite.run("PRAGMA foreign_keys = ON");
   if (path !== ":memory:") sqlite.run("PRAGMA journal_mode = WAL");
   const db = drizzle({ client: sqlite, schema });
+  // Migrations that rebuild a table drop the old one, which would cascade
+  // into its children. The pragma is a no-op inside the migrator's
+  // transaction, so it has to be off around it, then checked afterwards.
+  sqlite.run("PRAGMA foreign_keys = OFF");
   migrate(db, { migrationsFolder });
+  const broken = sqlite.query("PRAGMA foreign_key_check").all();
+  if (broken.length > 0) {
+    logger.error("foreign key violations after migrating", { broken });
+    throw new Error("The database failed its integrity check after migrating.");
+  }
+  sqlite.run("PRAGMA foreign_keys = ON");
   logger.debug("database ready", { path });
   return db;
 }

@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { Db } from "../db/client.ts";
-import { campaign, pettyCashEntry, session } from "../db/schema.ts";
+import { campaign, campaignGm, pettyCashEntry, session } from "../db/schema.ts";
 import { requireGm } from "../lib/auth.ts";
 import { notFound } from "../lib/errors.ts";
 import { idParam, readJson, uuidParam, type Router } from "../lib/http.ts";
@@ -14,7 +14,8 @@ export function ownedSession(db: Db, gmId: string, sessionId: number) {
     .select({ session, campaign })
     .from(session)
     .innerJoin(campaign, eq(campaign.id, session.campaignId))
-    .where(and(eq(session.id, sessionId), eq(campaign.gmId, gmId)))
+    .innerJoin(campaignGm, and(eq(campaignGm.campaignId, campaign.id), eq(campaignGm.gmId, gmId)))
+    .where(eq(session.id, sessionId))
     .get();
   if (!row) throw notFound("That session");
   return row;
