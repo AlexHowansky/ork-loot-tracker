@@ -271,8 +271,8 @@ they have claimed from the pool.
   and undoing a split unlocks the entries it locked. Players see the
   ledger but can't change it.
 
-* The ledger's Date column shows an entry's session by its date, as no
-  separate Session column is needed: a split's entry, which has no
+* The ledger's Date / Session column shows an entry's session by its date,
+  as no separate Session column is needed: a split's entry, which has no
   session, shows its own date instead, as does an entry whose session was
   deleted. Hovering over a session's date shows that session's title and
   notes, as on the loot table. For the GM, it opens a menu of the other

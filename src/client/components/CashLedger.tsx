@@ -158,7 +158,7 @@ export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
           <table className="table table-sm">
             <thead>
               <tr>
-                <th>Date</th>
+                <th>Date / Session</th>
                 <th>Description</th>
                 <th className="text-right">Amount</th>
                 <th className="text-right">Balance</th>
