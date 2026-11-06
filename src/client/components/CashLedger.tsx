@@ -2,17 +2,19 @@ import { useState } from "react";
 import { api, errorMessage } from "../api.ts";
 import { useRefresh } from "../queries.ts";
 import { formatMoney } from "../../shared/money.ts";
-import type { CampaignView, CashEntryView } from "../../shared/types.ts";
+import type { CampaignView, CashEntryView, SessionView } from "../../shared/types.ts";
 import { Money } from "./Money.tsx";
 import { CashForm } from "./SimpleForms.tsx";
 import { useConfirm } from "./Confirm.tsx";
 import { useToast } from "./Toast.tsx";
-import { Icon, faLock, faMinus, faPen, faPlus, faScaleBalanced, faTrash } from "./Icon.tsx";
+import { Menu } from "./Menu.tsx";
+import { Icon, faChevronDown, faLock, faMinus, faPen, faPlus, faScaleBalanced, faTrash } from "./Icon.tsx";
 import type { Mode } from "./Board.tsx";
 
 /** The cash ledger: the GM's adjustments and each split's change. */
 export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
   const [editing, setEditing] = useState<CashEntryView | "in" | "out" | null>(null);
+  const [busyId, setBusyId] = useState<number | null>(null);
   const refresh = useRefresh();
   const ask = useConfirm();
   const toast = useToast();
@@ -62,6 +64,50 @@ export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
       refresh();
     }
   }
+
+  async function moveToSession(e: CashEntryView, to: SessionView) {
+    setBusyId(e.id);
+    try {
+      await api.patch(`/api/cash/${e.id}`, { sessionId: to.id, description: e.description, amount: e.amount });
+      toast(`Moved ${e.description} to the ${to.date} session.`);
+    } catch (err) {
+      toast(errorMessage(err), "error");
+    } finally {
+      setBusyId(null);
+      refresh();
+    }
+  }
+
+  /** A session's title, or a dash for none or an untitled one. */
+  const sessionLabel = (session: SessionView | undefined) =>
+    session?.title ?? <span className="text-base-content/50">—</span>;
+
+  /** The GM's session cell: a menu of the other sessions to move the entry to. */
+  const sessionMenu = (e: CashEntryView, session: SessionView | undefined) => (
+    <Menu
+      align="start"
+      ariaLabel={`Session of ${e.description}: ${session?.date ?? "none"}. Change session`}
+      buttonClass={`inline-flex cursor-pointer items-center gap-1 rounded px-1 hover:bg-base-200 hover:text-base-content ${busyId === e.id ? "pointer-events-none opacity-50" : ""}`}
+      menuClass="w-max max-w-xs font-normal"
+      label={
+        <>
+          {sessionLabel(session)}
+          <Icon icon={faChevronDown} className="text-[0.6rem] opacity-70" />
+        </>
+      }
+    >
+      {view.sessions
+        .filter((s) => s.id !== e.sessionId)
+        .map((s) => (
+          <li key={s.id}>
+            <button type="button" onClick={() => moveToSession(e, s)}>
+              {s.date}
+              {s.title ? ` — ${s.title}` : ""}
+            </button>
+          </li>
+        ))}
+    </Menu>
+  );
 
   return (
     <div>
@@ -118,7 +164,14 @@ export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
                 return (
                   <tr key={e.id}>
                     <td className="whitespace-nowrap font-medium">{e.date}</td>
-                    <td>{session?.title ?? <span className="text-base-content/50">—</span>}</td>
+                    <td>
+                      {gm &&
+                      e.splitId === null &&
+                      !e.locked &&
+                      view.sessions.some((s) => s.id !== e.sessionId)
+                        ? sessionMenu(e, session)
+                        : sessionLabel(session)}
+                    </td>
                     <td>
                       {e.splitId !== null && <Icon icon={faScaleBalanced} className="mr-1 text-base-content/60" />}
                       {e.description}
