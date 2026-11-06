@@ -271,12 +271,13 @@ they have claimed from the pool.
   and undoing a split unlocks the entries it locked. Players see the
   ledger but can't change it.
 
-* The ledger's Session column shows the session's title, or a dash when
-  the session has no title or the entry has no session. For the GM, it
-  opens a menu of the other sessions, which moves the entry there (and so
-  to that session's date) without opening the edit form. A split's entry,
-  a locked entry, and every entry while there's no other session to move
-  to show the plain title instead.
+* The ledger's Session column shows the session's date, or a dash when
+  the entry has no session. Hovering over the date shows that session's
+  title and notes, as on the loot table. For the GM, it opens a menu of
+  the other sessions, which moves the entry there (and so to that
+  session's date) without opening the edit form. A split's entry, a locked
+  entry, and every entry while there's no other session to move to show
+  the plain date instead.
 
 * An entry's date is its session's date, and changes with it. Deleting a
   session keeps its entries, and so the balance: each stays in the ledger

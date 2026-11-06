@@ -78,9 +78,19 @@ export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
     }
   }
 
-  /** A session's title, or a dash for none or an untitled one. */
+  /** A session's date, with its title and notes on hover; a dash for none. */
   const sessionLabel = (session: SessionView | undefined) =>
-    session?.title ?? <span className="text-base-content/50">—</span>;
+    session?.title || session?.notes ? (
+      <span className="tooltip tooltip-top">
+        <span className="tooltip-content text-left">
+          {session.title && <span className="block font-semibold">{session.title}</span>}
+          {session.notes && <span className="block whitespace-pre-line">{session.notes}</span>}
+        </span>
+        {session.date}
+      </span>
+    ) : (
+      (session?.date ?? <span className="text-base-content/50">—</span>)
+    );
 
   /** The GM's session cell: a menu of the other sessions to move the entry to. */
   const sessionMenu = (e: CashEntryView, session: SessionView | undefined) => (
