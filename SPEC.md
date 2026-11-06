@@ -264,9 +264,9 @@ they have claimed from the pool.
   split" entry of its own, showing what was kept back for the reserve, paid
   out above it, or left over; it belongs to no session, can't be edited or
   deleted, and goes when the split is undone. A split also locks every
-  entry already in the ledger: it shows a lock in place of its edit and
-  delete buttons, and can't be edited or deleted, so what a split was
-  run against stays settled. A mistake in one is corrected with a new
+  entry already in the ledger: it is greyed out for everyone, shows the
+  GM a lock in place of its edit and delete buttons, and can't be edited
+  or deleted, so what a split was run against stays settled. A mistake in one is corrected with a new
   entry. Entries added after the split stay editable until the next one,
   and undoing a split unlocks the entries it locked. Players see the
   ledger but can't change it.

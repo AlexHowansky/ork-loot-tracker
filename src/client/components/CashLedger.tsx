@@ -171,10 +171,13 @@ export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
               {view.cash.map((e) => {
                 const detail = e.splitId === null ? null : splitDetail(e.splitId);
                 const session = e.sessionId === null ? undefined : sessionById.get(e.sessionId);
+                // A locked entry is greyed out. The Session cell fades its
+                // text rather than its opacity, so its tooltip stays solid.
+                const dim = e.locked ? "opacity-50" : "";
                 return (
                   <tr key={e.id}>
-                    <td className="whitespace-nowrap font-medium">{e.date}</td>
-                    <td>
+                    <td className={`whitespace-nowrap font-medium ${dim}`}>{e.date}</td>
+                    <td className={e.locked ? "text-base-content/50" : ""}>
                       {gm &&
                       e.splitId === null &&
                       !e.locked &&
@@ -182,15 +185,15 @@ export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
                         ? sessionMenu(e, session)
                         : sessionLabel(session)}
                     </td>
-                    <td>
+                    <td className={dim}>
                       {e.splitId !== null && <Icon icon={faScaleBalanced} className="mr-1 text-base-content/60" />}
                       {e.description}
                       {detail && <div className="text-xs text-base-content/60">{detail}</div>}
                     </td>
-                    <td className="text-right">
+                    <td className={`text-right ${dim}`}>
                       <Money amount={e.amount} campaign={campaign} />
                     </td>
-                    <td className="text-right">
+                    <td className={`text-right ${dim}`}>
                       <Money amount={balances.get(e.id) ?? 0} campaign={campaign} />
                     </td>
                     {gm && (
