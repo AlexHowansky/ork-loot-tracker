@@ -251,8 +251,8 @@ they have claimed from the pool.
   with their join codes.
 
 * The "Cash" tab is the cash ledger, newest first, showing each
-  entry's date, session, description, amount (negative when paid out) and
-  the balance after it. The GM adds entries with a "Cash in" button, for
+  entry's date, description, amount (negative when paid out) and the
+  balance after it. The GM adds entries with a "Cash in" button, for
   money paid in (e.g. job earnings), or a "Cash out" button, for money paid
   out (e.g. buying goods or services). Each entry has a session (default
   the latest), a description and an amount greater than zero, entered
@@ -266,18 +266,20 @@ they have claimed from the pool.
   deleted, and goes when the split is undone. A split also locks every
   entry already in the ledger: it is greyed out for everyone, shows the
   GM a lock in place of its edit and delete buttons, and can't be edited
-  or deleted, so what a split was run against stays settled. A mistake in one is corrected with a new
-  entry. Entries added after the split stay editable until the next one,
+  or deleted, so what a split was run against stays settled. A mistake in
+  one is corrected with a new entry. Entries added after the split stay editable until the next one,
   and undoing a split unlocks the entries it locked. Players see the
   ledger but can't change it.
 
-* The ledger's Session column shows the session's date, or a dash when
-  the entry has no session. Hovering over the date shows that session's
-  title and notes, as on the loot table. For the GM, it opens a menu of
-  the other sessions, which moves the entry there (and so to that
-  session's date) without opening the edit form. A split's entry, a locked
-  entry, and every entry while there's no other session to move to show
-  the plain date instead.
+* The ledger's Date column shows an entry's session by its date, as no
+  separate Session column is needed: a split's entry, which has no
+  session, shows its own date instead, as does an entry whose session was
+  deleted. Hovering over a session's date shows that session's title and
+  notes, as on the loot table. For the GM, it opens a menu of the other
+  sessions, which moves the entry there (and so to that session's date)
+  without opening the edit form. A split's entry, a locked entry, and
+  every entry while there's no other session to move to show the plain
+  date instead.
 
 * An entry's date is its session's date, and changes with it. Deleting a
   session keeps its entries, and so the balance: each stays in the ledger

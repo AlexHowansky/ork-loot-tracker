@@ -78,8 +78,11 @@ export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
     }
   }
 
-  /** A session's date, with its title and notes on hover; a dash for none. */
-  const sessionLabel = (session: SessionView | undefined) =>
+  /**
+   * An entry's date: its session's, with the session's title and notes on
+   * hover, or its own (a split's, or one whose session was deleted).
+   */
+  const sessionLabel = (e: CashEntryView, session: SessionView | undefined) =>
     session?.title || session?.notes ? (
       <span className="tooltip tooltip-top">
         <span className="tooltip-content text-left">
@@ -89,7 +92,7 @@ export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
         {session.date}
       </span>
     ) : (
-      (session?.date ?? <span className="text-base-content/50">—</span>)
+      (session?.date ?? e.date)
     );
 
   /** The GM's session cell: a menu of the other sessions to move the entry to. */
@@ -101,7 +104,7 @@ export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
       menuClass="w-max max-w-xs font-normal"
       label={
         <>
-          {sessionLabel(session)}
+          {sessionLabel(e, session)}
           <Icon icon={faChevronDown} className="text-[0.6rem] opacity-70" />
         </>
       }
@@ -156,7 +159,6 @@ export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Session</th>
                 <th>Description</th>
                 <th className="text-right">Amount</th>
                 <th className="text-right">Balance</th>
@@ -171,19 +173,18 @@ export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
               {view.cash.map((e) => {
                 const detail = e.splitId === null ? null : splitDetail(e.splitId);
                 const session = e.sessionId === null ? undefined : sessionById.get(e.sessionId);
-                // A locked entry is greyed out. The Session cell fades its
+                // A locked entry is greyed out. The Date cell fades its
                 // text rather than its opacity, so its tooltip stays solid.
                 const dim = e.locked ? "opacity-50" : "";
                 return (
                   <tr key={e.id}>
-                    <td className={`whitespace-nowrap font-medium ${dim}`}>{e.date}</td>
-                    <td className={e.locked ? "text-base-content/50" : ""}>
+                    <td className={`whitespace-nowrap font-medium ${e.locked ? "text-base-content/50" : ""}`}>
                       {gm &&
                       e.splitId === null &&
                       !e.locked &&
                       view.sessions.some((s) => s.id !== e.sessionId)
                         ? sessionMenu(e, session)
-                        : sessionLabel(session)}
+                        : sessionLabel(e, session)}
                     </td>
                     <td className={dim}>
                       {e.splitId !== null && <Icon icon={faScaleBalanced} className="mr-1 text-base-content/60" />}
