@@ -264,6 +264,13 @@ export const cashEntry = sqliteTable(
     splitId: integer("split_id").references(() => split.id, {
       onDelete: "cascade",
     }),
+    /**
+     * The split that locked this hand-written entry, since the entry
+     * already existed when it ran. Undoing that split clears it.
+     */
+    lockedBy: integer("locked_by").references(() => split.id, {
+      onDelete: "set null",
+    }),
     createdAt: createdAt(),
   },
   (t) => [

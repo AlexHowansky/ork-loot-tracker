@@ -7,7 +7,7 @@ import { Money } from "./Money.tsx";
 import { CashForm } from "./SimpleForms.tsx";
 import { useConfirm } from "./Confirm.tsx";
 import { useToast } from "./Toast.tsx";
-import { Icon, faMinus, faPen, faPlus, faScaleBalanced, faTrash } from "./Icon.tsx";
+import { Icon, faLock, faMinus, faPen, faPlus, faScaleBalanced, faTrash } from "./Icon.tsx";
 import type { Mode } from "./Board.tsx";
 
 /** The cash ledger: the GM's adjustments and each split's change. */
@@ -133,7 +133,16 @@ export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
                     {gm && (
                       <td className="text-right whitespace-nowrap">
                         {/* A split's entry goes only when the split is undone. */}
-                        {e.splitId === null && (
+                        {e.locked && (
+                          <span
+                            className="tooltip px-1.5 text-base-content/50"
+                            data-tip="Settled by a split"
+                            aria-label="Locked: settled by a split"
+                          >
+                            <Icon icon={faLock} />
+                          </span>
+                        )}
+                        {e.splitId === null && !e.locked && (
                           <>
                             <button
                               type="button"

@@ -1475,6 +1475,41 @@ describe("cash", () => {
     expect(now.cash.map((e) => e.description)).toEqual(["Refund", "Potions"]);
   });
 
+  test("a split locks the entries before it, until it's undone", async () => {
+    const { campaignId, sessionId, view } = await seed();
+    const entries = `/api/campaigns/${campaignId}/cash`;
+    const before = (await gmA.post(entries, { sessionId, description: "Job pay", amount: 500 })).body;
+    await addLoot(gmA, sessionId, { name: "Statue", value: 2000 });
+    const split = (await gmA.post(`/api/campaigns/${campaignId}/split`)).body;
+    const after = (await gmA.post(entries, { sessionId, description: "Tip", amount: 100 })).body;
+    let now = await view();
+    expect(Object.fromEntries(now.cash.map((e) => [e.description, e.locked]))).toEqual({
+      Tip: false,
+      "Loot split": false,
+      "Job pay": true,
+    });
+
+    const body = { sessionId, description: "Bounty", amount: 600 };
+    const edit = await gmA.patch(`/api/cash/${before.id}`, body);
+    expect(edit.status).toBe(400);
+    expect(edit.body.error).toContain("settled by a loot split");
+    expect((await gmA.del(`/api/cash/${before.id}`)).status).toBe(400);
+    expect((await gmA.patch(`/api/cash/${after.id}`, { ...body, amount: 50 })).status).toBe(200);
+
+    // A later split locks the newer entry too; undoing it frees only that.
+    await addLoot(gmA, sessionId, { name: "Vase", value: 2000 });
+    const second = (await gmA.post(`/api/campaigns/${campaignId}/split`)).body;
+    now = await view();
+    expect(now.cash.filter((e) => e.splitId === null).every((e) => e.locked)).toBe(true);
+    expect((await gmA.del(`/api/campaigns/${campaignId}/splits/${second.id}`)).status).toBe(200);
+    now = await view();
+    expect(now.cash.find((e) => e.id === after.id)!.locked).toBe(false);
+    expect(now.cash.find((e) => e.id === before.id)!.locked).toBe(true);
+    expect((await gmA.del(`/api/campaigns/${campaignId}/splits/${split.id}`)).status).toBe(200);
+    expect((await view()).cash.every((e) => !e.locked)).toBe(true);
+    expect((await gmA.del(`/api/cash/${before.id}`)).status).toBe(200);
+  });
+
   test("loot and cash can't take the campaign past what it can record", async () => {
     const { campaignId, sessionId, view } = await seed();
     const entries = `/api/campaigns/${campaignId}/cash`;

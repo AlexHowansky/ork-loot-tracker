@@ -306,6 +306,17 @@ export function runSplit(db: Db, c: Campaign): SplitView {
         tx.update(character).set({ debt }).where(eq(character.id, a.id)).run();
       }
     }
+    // Hand-written entries already in the ledger are settled by this split.
+    tx.update(cashEntry)
+      .set({ lockedBy: created.id })
+      .where(
+        and(
+          eq(cashEntry.campaignId, c.id),
+          isNull(cashEntry.splitId),
+          isNull(cashEntry.lockedBy),
+        ),
+      )
+      .run();
     const change = leftover - cashIn;
     if (change !== 0) {
       tx.update(campaign)
@@ -349,7 +360,8 @@ export function runSplit(db: Db, c: Campaign): SplitView {
  * Undoes the campaign's most recent split: bought items go back to their
  * claimants and sold items back to the pool, each character's debt returns
  * to what it was, the split's change to cash is reversed (along with
- * its ledger entry), and the split leaves the history. A claim can't go
+ * its ledger entry), the entries it locked unlock, and the split leaves
+ * the history. A claim can't go
  * back to a character who now has no shares, so that item returns to the
  * pool. If cash has since been spent below what the split added, the
  * undo is refused rather than leave it negative.
@@ -418,7 +430,7 @@ export function undoSplit(db: Db, c: Campaign, splitId: number): void {
       .set({ cash: current - change })
       .where(eq(campaign.id, c.id))
       .run();
-    // Its cash ledger entry goes with it.
+    // Its cash ledger entry goes with it, and the entries it locked unlock.
     tx.delete(split).where(eq(split.id, splitId)).run();
   });
 }

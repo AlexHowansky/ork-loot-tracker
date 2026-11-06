@@ -263,8 +263,13 @@ they have claimed from the pool.
   deleted, is refused. Each split that changes cash adds a "Loot
   split" entry of its own, showing what was kept back for the reserve, paid
   out above it, or left over; it belongs to no session, can't be edited or
-  deleted, and goes when the split is undone. Players see the ledger but
-  can't change it.
+  deleted, and goes when the split is undone. A split also locks every
+  entry already in the ledger: it shows a lock in place of its edit and
+  delete buttons, and can't be edited or deleted, so what a split was
+  run against stays settled. A mistake in one is corrected with a new
+  entry. Entries added after the split stay editable until the next one,
+  and undoing a split unlocks the entries it locked. Players see the
+  ledger but can't change it.
 
 * The ledger's Session column shows the session's title, or a dash when
   the session has no title or the entry has no session.
@@ -272,7 +277,7 @@ they have claimed from the pool.
 * An entry's date is its session's date, and changes with it. Deleting a
   session keeps its entries, and so the balance: each stays in the ledger
   with its date but no session (the confirmation says so), and can be given
-  another session by editing it.
+  another session by editing it, unless a split has locked it.
 
 * The GM can view, create, edit, and delete sessions in their campaigns.
 
@@ -499,9 +504,8 @@ they have claimed from the pool.
   split history, after confirming. Undoing it turns its bought items back
   into claims for the same characters and its sold items back to available,
   reverses the split's change to cash (removing its ledger entry, but
-  keeping entries made since), puts each character's debt back to what it
-  was before the split, and removes the split from the history. It is
-  refused when cash has since been spent too low to reverse that
-  change. Older splits can then
-  be undone in turn. A bought item whose character now has 0 shares goes
+  keeping entries made since), unlocks the ledger entries it locked, puts
+  each character's debt back to what it was before the split, and removes
+  the split from the history. It is refused when cash has since been spent
+  too low to reverse that change. Older splits can then be undone in turn. A bought item whose character now has 0 shares goes
   back to available instead, since that character can't hold a claim.

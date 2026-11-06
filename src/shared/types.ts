@@ -176,6 +176,8 @@ export interface CashEntryView {
   amount: number;
   /** Set when a split made this entry; only undoing the split removes it. */
   splitId: number | null;
+  /** A hand-written entry a later split settled; it can't be changed. */
+  locked: boolean;
 }
 
 /** One of a campaign's GMs, as the others see them. */

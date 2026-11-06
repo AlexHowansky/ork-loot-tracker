@@ -27,6 +27,7 @@ export {
   faXmark,
   faCalendarDays,
   faKey,
+  faLock,
   faSackDollar,
   faChevronDown,
   faCircleCheck,

@@ -90,3 +90,50 @@ test("0006 gives existing loot its session's campaign", () => {
   ]);
   db.close();
 });
+
+test("0007 locks each hand-written entry with the first split after it", () => {
+  dir = mkdtempSync(join(tmpdir(), "phat-loot-migrate-"));
+  const dbPath = join(dir, "app.db");
+  openDb(dbPath, migrationsBefore("0007_cash_lock"));
+
+  const old = new Database(dbPath);
+  const now = Date.now();
+  old.run("INSERT INTO gm (id, email, password_hash, created_at) VALUES ('g1', 'a@x.test', 'h', ?)", [now]);
+  old.run(
+    "INSERT INTO campaign (id, name, start_date, created_at, updated_at) " +
+      "VALUES ('c1', 'Runelords', '2026-01-05', ?, ?)",
+    [now, now],
+  );
+  const split = (id: number, at: number) =>
+    old.run(
+      "INSERT INTO split (id, campaign_id, total, total_shares, created_at) VALUES (?, 'c1', 0, 1, ?)",
+      [id, at],
+    );
+  const entry = (id: number, at: number, splitId: number | null = null) =>
+    old.run(
+      "INSERT INTO cash_entry (id, campaign_id, date, description, amount, split_id, created_at) " +
+        "VALUES (?, 'c1', '2026-01-05', 'x', 1, ?, ?)",
+      [id, splitId, at],
+    );
+  entry(1, now);
+  split(1, now + 10);
+  entry(2, now + 10, 1);
+  entry(3, now + 20);
+  split(2, now + 30);
+  entry(4, now + 40);
+  old.close();
+
+  openDb(dbPath, DRIZZLE);
+  const db = new Database(dbPath);
+  expect(db.query("SELECT id, locked_by FROM cash_entry ORDER BY id").all()).toEqual([
+    { id: 1, locked_by: 1 },
+    { id: 2, locked_by: null },
+    { id: 3, locked_by: 2 },
+    { id: 4, locked_by: null },
+  ]);
+  // Undoing a split unlocks what it locked.
+  db.run("PRAGMA foreign_keys = ON");
+  db.run("DELETE FROM split WHERE id = 2");
+  expect(db.query("SELECT locked_by FROM cash_entry WHERE id = 3").get()).toEqual({ locked_by: null });
+  db.close();
+});

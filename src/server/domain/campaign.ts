@@ -333,6 +333,7 @@ export function cashLedger(db: Db, campaignId: string): CashEntryView[] {
       description: cashEntry.description,
       amount: cashEntry.amount,
       splitId: cashEntry.splitId,
+      locked: sql<boolean>`${cashEntry.lockedBy} is not null`.mapWith(Boolean),
     })
     .from(cashEntry)
     .where(eq(cashEntry.campaignId, campaignId))

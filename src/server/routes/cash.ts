@@ -9,7 +9,10 @@ import { assertMoneyInRange, campaignSession, ownedCampaign } from "../domain/ca
 import { formatMoney } from "../../shared/money.ts";
 import { cashEntrySchema, cashEntryUpdateSchema } from "../../shared/schemas.ts";
 
-/** A hand-written ledger entry in a campaign `gmId` runs; else a 404. */
+/**
+ * A hand-written ledger entry in a campaign `gmId` runs, not yet locked
+ * by a split; else a 404 (or a 400 for one a split made or locked).
+ */
 function ownedEntry(db: Db, gmId: string, entryId: number) {
   const row = db
     .select({ entry: cashEntry, campaign })
@@ -22,6 +25,12 @@ function ownedEntry(db: Db, gmId: string, entryId: number) {
   if (row.entry.splitId !== null) {
     throw badRequest(
       "That entry was made by a loot split. Undo the split to remove it.",
+    );
+  }
+  if (row.entry.lockedBy !== null) {
+    throw badRequest(
+      "That entry was settled by a loot split and can't be changed. " +
+        "Add a new entry to correct it, or undo the split.",
     );
   }
   return row;
