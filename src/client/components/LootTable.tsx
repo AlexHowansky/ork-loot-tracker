@@ -289,12 +289,12 @@ export function LootTable({
       <th className={className} aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}>
         <button
           type="button"
-          className={`inline-flex cursor-pointer items-center gap-1 whitespace-nowrap hover:text-base-content ${active ? "text-base-content" : ""}`}
+          className={`group inline-flex cursor-pointer items-center gap-1 whitespace-nowrap hover:text-base-content ${active ? "text-base-content" : ""}`}
           onClick={() => onSort({ key, dir: active && sort.dir === "asc" ? "desc" : "asc" })}
         >
           <Icon
             icon={active ? (sort.dir === "asc" ? faSortUp : faSortDown) : faSort}
-            className={active ? "" : "text-base-content/30"}
+            className={active ? "" : "invisible text-base-content/30 group-hover:visible group-focus-visible:visible"}
           />
           {label}
         </button>
@@ -518,7 +518,7 @@ export function LootTable({
                         </div>
                       )}
                     </td>
-                    <td className="hidden min-w-24 text-base-content/70 sm:table-cell">{item.location}</td>
+                    <td className="hidden min-w-40 text-base-content/70 sm:table-cell">{item.location}</td>
                     <td className="text-right tabular-nums">{item.quantity}</td>
                     <td className="hidden text-right sm:table-cell">
                       {item.unidentified && !gm ? (

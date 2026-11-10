@@ -23,6 +23,17 @@ const COLOR: Record<LootStatus, string> = {
   abandoned: "badge-ghost",
 };
 
+/** The icon colour a soft pill of each status uses, for its menu entry. */
+const ICON_COLOR: Record<LootStatus, string> = {
+  pending: "text-secondary",
+  available: "text-success",
+  party: "text-info",
+  claimed: "text-warning",
+  bought: "text-neutral",
+  sold: "text-base-content",
+  abandoned: "text-base-content",
+};
+
 const ICON: Record<LootStatus, IconDefinition> = {
   pending: faHourglassHalf,
   available: faTag,
@@ -96,7 +107,7 @@ export function StatusMenu({
             aria-description={STATUS_DESCRIPTION[s]}
             onClick={() => onChoose(s)}
           >
-            <Icon icon={ICON[s]} />
+            <Icon icon={ICON[s]} className={ICON_COLOR[s]} />
             {STATUS_LABEL[s]}
           </button>
         </li>

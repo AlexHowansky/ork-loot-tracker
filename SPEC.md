@@ -376,7 +376,8 @@ they have claimed from the pool.
 * The loot table is sorted by item name, A to Z, until another column is
   chosen. Clicking any column header but the actions sorts the table by
   it, ascending; clicking it again reverses the order. An arrow marks the
-  sorted column and its direction. Status sorts as pending, available,
+  sorted column and its direction; the other headers show a sort icon
+  only while hovered or focused. Status sorts as pending, available,
   party, claimed, bought, sold, abandoned, and Session by the session's
   date (no session counts as blank).
   Blank cells (no location, value or claimant, or a value hidden from players
