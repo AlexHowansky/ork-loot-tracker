@@ -6,7 +6,7 @@ import { badRequest, notFound } from "../lib/errors.ts";
 import { idParam, readJson, uuidParam, type Router } from "../lib/http.ts";
 import { logger } from "../lib/logger.ts";
 import { assertMoneyInRange, campaignSession, ownedCampaign } from "../domain/campaign.ts";
-import { formatMoney } from "../../shared/money.ts";
+import { formatMoney, MAX_MONEY } from "../../shared/money.ts";
 import { cashEntrySchema, cashEntryUpdateSchema } from "../../shared/schemas.ts";
 
 /**
@@ -37,19 +37,19 @@ function ownedEntry(db: Db, gmId: string, entryId: number) {
 }
 
 /**
- * Moves cash by `change`, refusing to take it below zero or the
- * campaign past what it can record. Reads the balance inside the caller's
- * transaction, so it can't race another write.
+ * Moves cash by `change`. Cash may go below zero (the next split pays it
+ * back first), but not so far, nor the campaign so high, that it passes
+ * what it can record. Reads the balance inside the caller's transaction,
+ * so it can't race another write.
  */
 function adjustCash(tx: Db, campaignId: string, change: number) {
   const c = tx.select().from(campaign).where(eq(campaign.id, campaignId)).get();
   if (!c) throw notFound("That campaign");
-  if (c.cash + change < 0) {
-    const money = (n: number) => formatMoney(n, c.currencyDecimals, c.currencyLabel);
+  if (c.cash + change < -MAX_MONEY) {
+    const most = formatMoney(MAX_MONEY, c.currencyDecimals, c.currencyLabel);
     throw badRequest(
-      `Cash only holds ${money(c.cash)}, so it can't pay out ` +
-        `${money(-change)}.`,
-      { amount: "That's more than cash holds." },
+      `That would leave cash more than ${most} short, the most it can record.`,
+      { amount: "That's more than the campaign can record." },
     );
   }
   tx.update(campaign)

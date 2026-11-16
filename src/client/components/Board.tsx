@@ -93,7 +93,9 @@ export function CampaignBoard({
             pool.cashIn > 0
               ? "Available and claimed, plus spare cash"
               : pool.cashIn < 0
-                ? "Available and claimed, less the cash top-up"
+                ? campaign.cash < 0
+                  ? "Available and claimed, less what cash is short"
+                  : "Available and claimed, less the cash top-up"
                 : "Available and claimed"
           }
         />
@@ -108,9 +110,11 @@ export function CampaignBoard({
           title="Cash"
           value={<Money amount={campaign.cash} campaign={campaign} />}
           desc={
-            campaign.cashHold > 0
-              ? `Keeping ${formatMoney(campaign.cashHold, campaign.currencyDecimals, campaign.currencyLabel)} in reserve for shared costs`
-              : "Paid out in the next split"
+            campaign.cash < 0
+              ? "Overdrawn: the next split pays this back first"
+              : campaign.cashHold > 0
+                ? `Keeping ${formatMoney(campaign.cashHold, campaign.currencyDecimals, campaign.currencyLabel)} in reserve for shared costs`
+                : "Paid out in the next split"
           }
         />
         {me && (

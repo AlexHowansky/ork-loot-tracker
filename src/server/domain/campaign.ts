@@ -185,7 +185,8 @@ export function computePool(
 
 /**
  * Refuses a change that takes the campaign's money past `MAX_MONEY`: the
- * subtotals of all its loot, whatever its status, plus cash. Called
+ * subtotals of all its loot, whatever its status, plus cash (when it
+ * isn't overdrawn; a shortfall doesn't make room for more loot). Called
  * inside the change's transaction after it is written, so throwing rolls
  * it back; `field` names the form field to mark.
  */
@@ -194,7 +195,7 @@ export function assertMoneyInRange(db: Db, campaignId: string, field: string): v
   if (!c) throw notFound("That campaign");
   const total = campaignLoot(db, campaignId).reduce(
     (n, r) => n + subtotal(r.quantity, r.value, r.marketPct),
-    c.cash,
+    Math.max(c.cash, 0),
   );
   if (total > MAX_MONEY) {
     const most = formatMoney(MAX_MONEY, c.currencyDecimals, c.currencyLabel);

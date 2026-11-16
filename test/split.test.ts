@@ -118,6 +118,12 @@ describe("cash flow", () => {
   test("the top-up stops when the loot runs out", () => {
     expect(cashFlow(10, 5, 50)).toEqual({ cashIn: -10, total: 0 });
   });
+
+  test("overdrawn cash is paid back from the loot first", () => {
+    expect(cashFlow(100, -30, 0)).toEqual({ cashIn: -30, total: 70 });
+    expect(cashFlow(100, -30, 50)).toEqual({ cashIn: -80, total: 20 });
+    expect(cashFlow(10, -30, 0)).toEqual({ cashIn: -10, total: 0 });
+  });
 });
 
 describe("signed amounts", () => {

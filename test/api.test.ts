@@ -1395,6 +1395,27 @@ describe("cash", () => {
     ]);
   });
 
+  test("the next split pays back overdrawn cash first", async () => {
+    const { campaignId, sessionId, view } = await seed();
+    const entries = `/api/campaigns/${campaignId}/cash`;
+    await gmA.post(entries, { sessionId, description: "Healing", amount: -150 });
+    // 50 of loot doesn't cover the 150 short, so all of it goes to cash.
+    await addLoot(gmA, sessionId, { name: "Ring", value: 100 });
+    let now = await view();
+    expect(now.campaign.cash).toBe(-150);
+    expect(now.pool.cashIn).toBe(-50);
+    let split = (await gmA.post(`/api/campaigns/${campaignId}/split`)).body;
+    expect(split).toMatchObject({ total: 0, cash: -50, leftover: 0 });
+    expect((await view()).campaign.cash).toBe(-100);
+    // The next split pays back the rest and divides what remains.
+    await addLoot(gmA, sessionId, { name: "Vase", value: 1000 });
+    split = (await gmA.post(`/api/campaigns/${campaignId}/split`)).body;
+    expect(split).toMatchObject({ total: 400, cash: -100, leftover: 0 });
+    now = await view();
+    expect(now.campaign.cash).toBe(0);
+    expect(now.cash.map((e) => e.amount)).toEqual([100, 50, -150]);
+  });
+
   test("a hold larger than the loot takes all of it", async () => {
     const { campaignId, sessionId, view } = await seed();
     await gmA.patch(`/api/campaigns/${campaignId}`, { ...campaignBody, cashHold: 5000 });
@@ -1405,7 +1426,7 @@ describe("cash", () => {
     expect((await view()).campaign.cash).toBe(100);
   });
 
-  test("the GM records adjustments, which can't overdraw cash", async () => {
+  test("the GM records adjustments, which can overdraw cash", async () => {
     const { campaignId, characterIds, sessionId, view } = await seed();
     const later = (await gmA.post(`/api/campaigns/${campaignId}/sessions`, { date: "2026-02-02" })).body;
     const entries = `/api/campaigns/${campaignId}/cash`;
@@ -1414,10 +1435,9 @@ describe("cash", () => {
 
     const paidIn = (await entry(500)).body;
     expect((await view()).campaign.cash).toBe(500);
-    const over = await entry(-700, "Inn");
-    expect(over.status).toBe(400);
-    expect(over.body.error).toContain("only holds 5.00 gp");
-    expect(over.body.fields.amount).toBeDefined();
+    const over = (await entry(-700, "Feast")).body;
+    expect((await view()).campaign.cash).toBe(-200);
+    expect((await gmA.del(`/api/cash/${over.id}`)).status).toBe(200);
     const inn = (await entry(-200, "Inn")).body;
     expect((await view()).campaign.cash).toBe(300);
 
@@ -1425,7 +1445,6 @@ describe("cash", () => {
     expect((await gmA.post(entries, { sessionId, description: "", amount: 1 })).body.fields.description).toBeDefined();
 
     // Editing moves the balance by the difference.
-    expect((await gmA.patch(`/api/cash/${paidIn.id}`, { sessionId, description: "Job pay", amount: 100 })).status).toBe(400);
     expect((await gmA.patch(`/api/cash/${paidIn.id}`, { sessionId: later.id, description: "Bounty", amount: 300 })).status).toBe(200);
     let now = await view();
     expect(now.campaign.cash).toBe(100);
@@ -1433,7 +1452,6 @@ describe("cash", () => {
       ["2026-02-02", "Bounty", 300],
       ["2026-01-05", "Inn", -200],
     ]);
-    expect((await gmA.del(`/api/cash/${paidIn.id}`)).status).toBe(400);
     expect((await gmA.del(`/api/cash/${inn.id}`)).status).toBe(200);
     expect((await view()).campaign.cash).toBe(300);
 
@@ -1461,18 +1479,13 @@ describe("cash", () => {
     expect((await gmA.patch(`/api/cash/${splitEntry!.id}`, body)).status).toBe(400);
     expect((await gmA.del(`/api/cash/${splitEntry!.id}`)).status).toBe(400);
 
-    // Spending what the split put in blocks undoing it until it's paid back.
+    // Undoing it after spending what it put in leaves cash short.
     const entries = `/api/campaigns/${campaignId}/cash`;
     await gmA.post(entries, { sessionId, description: "Potions", amount: -103 });
-    const undo = () => gmA.del(`/api/campaigns/${campaignId}/splits/${split.id}`);
-    const refused = await undo();
-    expect(refused.status).toBe(400);
-    expect(refused.body.error).toContain("can't be undone");
-    await gmA.post(entries, { sessionId, description: "Refund", amount: 103 });
-    expect((await undo()).status).toBe(200);
+    expect((await gmA.del(`/api/campaigns/${campaignId}/splits/${split.id}`)).status).toBe(200);
     const now = await view();
-    expect(now.campaign.cash).toBe(0);
-    expect(now.cash.map((e) => e.description)).toEqual(["Refund", "Potions"]);
+    expect(now.campaign.cash).toBe(-103);
+    expect(now.cash.map((e) => e.description)).toEqual(["Potions"]);
   });
 
   test("a split locks the entries before it, until it's undone", async () => {

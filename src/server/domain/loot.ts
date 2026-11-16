@@ -363,8 +363,8 @@ export function runSplit(db: Db, c: Campaign): SplitView {
  * its ledger entry), the entries it locked unlock, and the split leaves
  * the history. A claim can't go
  * back to a character who now has no shares, so that item returns to the
- * pool. If cash has since been spent below what the split added, the
- * undo is refused rather than leave it negative.
+ * pool. Cash may end up below zero if it has since been spent below
+ * what the split added; the next split pays that back.
  */
 export function undoSplit(db: Db, c: Campaign, splitId: number): void {
   db.transaction((tx) => {
@@ -387,12 +387,6 @@ export function undoSplit(db: Db, c: Campaign, splitId: number): void {
       .from(campaign)
       .where(eq(campaign.id, c.id))
       .get()!.cash;
-    if (current - change < 0) {
-      throw badRequest(
-        "This split can't be undone, because cash has since been spent " +
-          "below what the split put in. Add a cash entry paying it back first.",
-      );
-    }
     const rows = tx.select().from(loot).where(eq(loot.splitId, splitId)).all();
     const shares = new Map(
       tx

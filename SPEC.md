@@ -42,8 +42,10 @@ A per-campaign amount, in the campaign's currency, set aside for shared
 costs such as tavern stays and healing potions. Splits keep it at the
 campaign's cash reserve and add to it what they can't divide evenly; the
 GM records money paid in or out of it by hand. Every change is an entry in
-the cash ledger, so the ledger always adds up to the balance. The GM
-and players see it next to the party fund.
+the cash ledger, so the ledger always adds up to the balance. Cash can
+go below zero when more is paid out than it holds; the next split pays
+that back before anything is divided. The GM and players see it next to
+the party fund.
 
 ### Debt
 
@@ -259,16 +261,17 @@ they have claimed from the pool.
   without a sign; the button sets the direction, and money paid out is
   shown negative. Adding one needs a session to exist. The GM can also
   edit an entry, including switching it between in and out, and delete it.
-  An entry that would take cash below zero, as added, edited or
-  deleted, is refused. Each split that changes cash adds a "Loot
+  An entry may take cash below zero, as added, edited or deleted; the
+  board then shows cash as overdrawn. Each split that changes cash adds a "Loot
   split" entry of its own, showing what was kept back for the reserve, paid
   out above it, or left over; it belongs to no session, can't be edited or
   deleted, and goes when the split is undone. A split also locks every
   entry already in the ledger: it is greyed out for everyone, shows the
   GM a lock in place of its edit and delete buttons, and can't be edited
   or deleted, so what a split was run against stays settled. A mistake in
-  one is corrected with a new entry. Entries added after the split stay editable until the next one,
-  and undoing a split unlocks the entries it locked. Players see the
+  one is corrected with a new entry. Entries added after the split stay
+  editable until the next one, and undoing a split unlocks the entries it
+  locked. Players see the
   ledger but can't change it.
 
 * The ledger's Date / Session column shows an entry's session by its date,
@@ -464,9 +467,11 @@ they have claimed from the pool.
 * The GM can, at any time, perform a loot split. This represents selling off
   loot acquired since the last loot split. When a loot split happens:
     * Add the value of all available items plus all claimed items.
-    * Bring cash to the reserve: if it holds less, take the difference
-      from that total first (as far as the total reaches); if it holds
-      more, add the excess to the total.
+    * Bring cash to the reserve: if it holds less (including when it is
+      below zero), take the difference from that total first (as far as
+      the total reaches, leaving cash short of the reserve, or still below
+      zero, until a later split); if it holds more, add the excess to the
+      total.
     * Allocate this total across all characters, accounting for the number of
       shares each has. A split needs at least one share among the
       characters. A character with 0 shares takes no part in the split and
@@ -514,6 +519,8 @@ they have claimed from the pool.
   reverses the split's change to cash (removing its ledger entry, but
   keeping entries made since), unlocks the ledger entries it locked, puts
   each character's debt back to what it was before the split, and removes
-  the split from the history. It is refused when cash has since been spent
-  too low to reverse that change. Older splits can then be undone in turn. A bought item whose character now has 0 shares goes
-  back to available instead, since that character can't hold a claim.
+  the split from the history. If cash has since been spent below what
+  the split added, undoing it leaves cash below zero. Older splits can
+  then be undone in turn. A bought item whose character now has 0 shares
+  goes back to available instead, since that character can't hold a
+  claim.

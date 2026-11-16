@@ -36,7 +36,7 @@ export function CashLedger({ view, mode }: { view: CampaignView; mode: Mode }) {
     const split = view.splits.find((s) => s.id === splitId);
     if (!split) return null;
     const parts: string[] = [];
-    if (split.cash < 0) parts.push(`${money(-split.cash)} kept back to reach the reserve`);
+    if (split.cash < 0) parts.push(`${money(-split.cash)} kept back for cash`);
     if (split.cash > 0) parts.push(`${money(split.cash)} above the reserve paid out`);
     if (split.leftover > 0) parts.push(`${money(split.leftover)} that didn't divide evenly`);
     return parts.join(", ");

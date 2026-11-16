@@ -78,8 +78,13 @@ export function SplitModal({
               {preview.data.cash < 0 && (
                 <>
                   , of which <Money amount={-preview.data.cash} campaign={campaign} className="font-semibold" />{" "}
-                  is kept back to top cash up to its reserve of{" "}
-                  <Money amount={campaign.cashHold} campaign={campaign} className="font-semibold" />
+                  is kept back to {campaign.cash < 0 ? "pay back what cash is short" : "top cash up"}
+                  {campaign.cashHold > 0 && (
+                    <>
+                      {campaign.cash < 0 ? " and fill" : " to"} its reserve of{" "}
+                      <Money amount={campaign.cashHold} campaign={campaign} className="font-semibold" />
+                    </>
+                  )}
                 </>
               )}
               . Available
