@@ -341,7 +341,10 @@ they have claimed from the pool.
   base reference URLs get no suggestions.
 
 * When a loot item has a link, its name in the loot table links to it, in a
-  new tab, for the GM and players alike.
+  new tab, for the GM and players alike. While the item is unidentified
+  its name links nowhere, not even for the GM, since the page could give
+  away what it is to anyone who sees the GM's screen; the link is kept and
+  can still be edited in the loot form.
 
 * The loot table shows each item's location in a "Location" column right
   after the item's name. On narrow screens it appears under the name.

@@ -481,7 +481,9 @@ export function LootTable({
                   <tr key={item.id} className={mine ? "bg-warning/10" : ""}>
                     <td className="min-w-40">
                       <div className="font-medium">
-                        {item.link ? (
+                        {/* An unidentified item's page could give it away, even
+                            on the GM's screen, so its name links only once known. */}
+                        {item.link && !item.unidentified ? (
                           <a href={item.link} target="_blank" rel="noopener noreferrer" className="link link-hover">
                             {item.name}
                             <Icon icon={faArrowUpRightFromSquare} className="ml-1 text-xs text-base-content/50" />
